@@ -1,0 +1,232 @@
+* NuDrop
+  :PROPERTIES:
+  :CUSTOM_ID: nudrop
+  :END:
+Yet another FOSS SecureDrop built on top of NuCypher and Ethereum.
+(tentative name)
+
+** Background
+   :PROPERTIES:
+   :CUSTOM_ID: background
+   :END:
+Securedrop is a self-hostable web 2.0 app created originally by Aaron
+Swartz and now maintained by the Freedom of Press Foundation. It helps
+whistle-blowers submit data anonymously to media organizations.
+
+NuDrop will utilize the cryptographic infra of NuCypher network and
+allow users to share and submit data anonymously by people such as
+whistleblowers and journalists to organizations such as media outlets.
+It provides a side-channel app on top of NuCypher which facilitates the
+communication.
+
+** Design / Description of work
+   :PROPERTIES:
+   :CUSTOM_ID: design-description-of-work
+   :END:
+*** Goals
+    :PROPERTIES:
+    :CUSTOM_ID: goals
+    :END:
+The major goal of this project is to deploy NuDrop on mainnet. The plan
+is to build a FOSS webapp/dApp that will allow sensitive communication
+to flow and reach the intended recipients enabled by NuCypher.
+
+*** Brief
+    :PROPERTIES:
+    :CUSTOM_ID: brief
+    :END:
+In this app the following actors (in tandem with NuCypher terms) exist:
+
+1. Alice = Entity wishing to fund encryption of data (say Freedom of
+   Press foundation)
+2. Enrico = Entity wishing to send encrypted data (such as a
+   whistleblower)
+3. Bob = Entity that is the intended recipient, such as Wikileaks
+4. Ursula = NuCypher network
+5. NuDrop = Our dApp (sidechannel facilitating this)
+
+*** Benefits over Securedrop
+    :PROPERTIES:
+    :CUSTOM_ID: benefits-over-securedrop
+    :END:
+In the long-term, NuDrop can provide the following long term benefits
+and improvements over Securedrop:
+
+1. Alice can disappear from the planet and Bob can still access the data
+   (as long as Alice provides a long enough expiry)
+2. Enrico does not need to directly upload to a Securedrop, and can
+   instead upload encrypted data through NuDrop (as Enrico), or directly
+   upload encrypt and upload data.
+3. Alice on behalf of Enrico can later on, choose the access control and
+   revoke it as well.
+4. Alice does not need to interact with any of the Bob's in the system
+   directly. And Bob also needs not to interact with Alice. Enricos only
+   need the policy key and keep on writing data with it without ever
+   having to interact.
+5. Alice, Enrico and Bob only need to be aware of the IPFS address to be
+   able to communicate, which can be facilitated via NuDrop.
+6. Neither Alice nor Bob needs any NU to use the network. Only ETH is
+   needed. Alice's ETH can only be traced to have been spent on NuCypher
+   contracts, and will have zero trace or link to Bob. (Apart from the
+   PolicyManager contract which is not readable as such)
+
+*** User flows
+    :PROPERTIES:
+    :CUSTOM_ID: user-flows
+    :END:
+**** Alice
+     :PROPERTIES:
+     :CUSTOM_ID: alice
+     :END:
+
+- Alice logs into the dApp with Metamask.
+- NuCypher keyring is created for alice.
+- NuDrop will generate the policy public key for her and ask her to give
+  a label to it. The label can contain a pseudonym/codename, which can
+  be used by Bob to maintain a relationship with Alice similar to
+  Securedrop, while maintaining a degree of anonymity. Alice can
+  generate multiple such policies.
+- Now, Alice will be shown two options,
+- to either encrypt her data using a policy (This is the same view as
+  Enrico)
+
+  - in this case we will give a form for her to be able to upload her
+    data
+  - here, NuDrop will act as an Enrico and encrypt data using her policy
+    encrypting key and store it on IPFS
+  - She can upload it to IPFS, NuDrop will store her ipfs:// url as well
+    so that it can be easier for notifying registered Bobs.
+  - In the backend, NuDrop will store the corresponding files to the the
+    policy label and notify Bobs (if already attached to the policy
+    about files being added)
+
+- or to grant policies to registered Bobs
+
+  - NuDrop shows her the registered Bobs available on NuDrop.
+
+    - She selects a Bob that is registered with NuDrop
+    - After selecting Bob, she can select the policy label.
+    - She can select the time duration for which it will be available
+      for Bob to view.
+    - NuDrop will facilitate the Grant call on behalf of Alice.
+    - NuDrop will in the backend share the ipfs:// url associated to her
+      policy public key and selected label with the appropriate Bob.
+
+**** Bob
+     :PROPERTIES:
+     :CUSTOM_ID: bob
+     :END:
+
+- Bob logs in to the dApp using metamask
+- Onboarding
+
+  - In the onboarding for Bob, his NuCypher keyring is generated.
+  - This keyring can be used by Alice to create and grant her policy.
+
+- Dashboard
+
+  - On his dashboard, Bob can see all the policies shared with him.
+  - These will be shown alongside labels of the policy which can contain
+    a codename of Alice.
+  - On opening a policy label, the corresponding ipfs:// url is fetched
+    from NuDrop's backend and rendered as cleartext on the web.
+
+    - This is done through the connecting to the Ursula's which perform
+      the decryption.
+
+  - Alice can also upload multiple ipfs:// urls to her policy in case
+    she intends to share multiple docs.
+
+**** Enrico(s)
+     :PROPERTIES:
+     :CUSTOM_ID: enricos
+     :END:
+
+- Separately from Alice, Enrico can also open NuDrop and enter the
+  policy public key and ipfs:// url and immediately edit the file
+- This allows him to not need metamask or any special browser extension,
+  once the things needed for Enrico are generated by Alice.
+- Multiple Enricos can use the same policy keys to write to the
+  document.
+
+*** Tasks
+    :PROPERTIES:
+    :CUSTOM_ID: tasks
+    :END:
+I have divided the project into three major tasks:
+
+1. Writing the prototype.
+2. Writing the codebase for a basic frontend, an API and testing them on
+   the testnet
+3. Improving the UI and polishing for release.
+4. (Moonshot task) Work on an non-browser based app, which does not need
+   to connect to the NuDrop servers for Enrico and can write to the file
+   according to the Enrico user flow.
+
+** Scheduling
+   :PROPERTIES:
+   :CUSTOM_ID: scheduling-deliverables
+   :END:
+*** Week 3 (Feb 20, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-3-feb-20-2021
+    :END:
+By the end of Week 3, I plan to build a prototype with the user flows in
+mind implemented and tested on the testnet. The demo would be similar to
+the heartbeat and finnegan wake demos written just using plain old
+python.
+**** Tasks
+***** DONE Read docs
+***** DONE Run both Finnegan's wake and heartbeat demo in federated mode
+***** DONE Modify Finnegan's wake and rewrite the user flow in python
+CLOSED: [2021-02-17 Wed 00:10]
+:LOGBOOK:
+CLOCK: [2021-02-16 Tue 23:18]--[2021-02-17 Wed 00:05] =>  0:47
+CLOCK: [2021-02-16 Tue 20:17]--[2021-02-16 Tue 22:18] =>  2:01
+:END:
+***** DONE Share on Discord for feedback
+CLOSED: [2021-02-17 Wed 00:19]
+
+*** Week 4 (Feb 27, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-4-feb-27-2021
+    :END:
+By the end of week 4 I want to have modified the prototype and
+implemented an API on top of it. And start to begin thinking about the
+UI. I am thinking of writing a Django/Flask app that can be served by
+Gunicorn considering NuCypher is available as a Python lib.
+
+*** Week 5 (Mar 6, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-5-mar-6-2021
+    :END:
+During week 5, I want to start building the UI and integrating it with
+the API. I am thinking of using VueJS to write the web UI and it can
+interact with the API. I have less experience with the UI part of Web3
+so keeping more time for this.
+
+*** Week 6 (Mar 13, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-6-mar-13-2021
+    :END:
+By week 6, I intended to keep working on this and at the end have a
+prototype ready. This would be the first major deliverable.
+
+*** Week 7 (Mar 20, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-7-mar-20-2021
+    :END:
+Keeping week 7 for bug fixes, end to end testing and asking folks in the
+community to test it out. Also, trying to deploy the NuDrop app.
+
+*** Week 8 (Mar 27, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-8-mar-27-2021
+    :END:
+Work on deploying it on the mainnet and figuring out the kinks.
+
+*** Week 9 (Mar 31, 2021)
+    :PROPERTIES:
+    :CUSTOM_ID: week-9-mar-31-2021
+    :END:
+Push, Deploy and Announce!
