@@ -126,3 +126,53 @@ def manage_policy():
         del alice
     else:
         pass
+
+
+@app.route("/encrypt", methods=["POST", "GET"])
+def encrypt():
+    # TODO: wip encrypt
+    # Enrico now can enter the Alice verifying key that was shared with him by Alice.
+    alice_data_for_enrico = nudrop_db_alices[alice_verifying_key]
+
+    enrico = Enrico(policy_encrypting_key=alice_data_for_enrico["policy_public_key"])
+    plaintext = b"Extremely sensitive information."
+    ciphertext, _signature = enrico.encrypt_message(plaintext)
+
+    # Enrico now adds it to NuDrop
+    # Let's create a new file in the data store abstraction
+    fname = "dummy_super_random_file_name"
+    nudrop_filestore[fname] = ciphertext
+
+    # Add it to the list of files registered for this Alice verifying key.
+    nudrop_db_alices[alice_verifying_key]["files"].append(fname)
+
+    del enrico
+
+
+@app.route("/decrypt", methods=["POST", "GET"])
+def decrypt():
+    # TODO: wip encrypt
+    bob1_data = nudrop_db_bobs["bob1"]
+
+    selected_alice_verifying_key = nudrop_db_bobs["bob1"]["known_alices"][0]
+    selected_alice_data = nudrop_db_alices[selected_alice_verifying_key]
+
+    bob.join_policy(selected_alice_data["label"], selected_alice_verifying_key)
+
+    # Now Bob can retrieve the original message.
+    # Bob fetches one of the encrypted file.
+    selected_file_name = selected_alice_data["files"][0]
+    fetched_ciphertext = nudrop_filestore[selected_file_name]
+
+    delivered_cleartexts = bob.retrieve(
+        fetched_ciphertext,
+        policy_encrypting_key=policy_public_key,
+        alice_verifying_key=alice_verifying_key,
+        label=label,
+    )
+
+    # We show that indeed this is the passage originally encrypted by Enrico.
+    print("Retrieved: {}".format(delivered_cleartexts[0]))
+    assert plaintext == delivered_cleartexts[0]
+
+    bob.disenchant()
