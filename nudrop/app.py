@@ -85,4 +85,44 @@ def register_alice():
         return render_template("register_alice.html")
 
 
-# @app.route("/register/alice", methods=["POST", "GET"])
+@app.route("/policy", methods=["POST", "GET"])
+def manage_policy():
+    if request.method == "POST":
+        # TODO: work on making a form and get data from form
+        alice = Alice(
+            federated_only=True, domain=TEMPORARY_DOMAIN, known_nodes=[ursula]
+        )
+        alice.start_learning_loop(now=True)
+        alice.block_until_number_of_known_nodes_is(
+            8, timeout=30, learn_on_this_thread=True
+        )
+
+        label = b"my/secret/label/snowy_codename"
+
+        policy_public_key = alice.get_policy_encrypting_key_from_label(label)
+
+        selected_bob = nudrop_db_bobs["bob1"]
+
+        remote_bob = Bob.from_public_keys(
+            encrypting_key=selected_bob["enc_key"],
+            verifying_key=selected_bob["sig_key"],
+        )
+        policy = alice.grant(
+            remote_bob, label, m=m, n=n, expiration=policy_end_datetime
+        )
+
+        policy.treasure_map_publisher.block_until_complete()
+
+        alice_verifying_key = bytes(alice.stamp)
+
+        nudrop_db_bobs["bob1"]["known_alices"].append(alice_verifying_key)
+        nudrop_db_alices[alice_verifying_key] = {
+            "policy_public_key": policy_public_key,
+            "label": label,
+            "files": [],
+        }
+
+        alice.disenchant()
+        del alice
+    else:
+        pass
