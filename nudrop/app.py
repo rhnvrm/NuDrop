@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, flash, redirect
 import datetime
 import maya
 import os
 import sys
 from pathlib import Path
+import redis
 
 from nucypher.characters.lawful import Alice, Bob, Ursula
+from nucypher.config.characters import AliceConfiguration
 from nucypher.characters.lawful import Enrico as Enrico
 from nucypher.config.constants import TEMPORARY_DOMAIN
 from nucypher.crypto.powers import SigningPower, DecryptingPower
@@ -19,9 +21,11 @@ GlobalLoggerSettings.start_console_logging()
 
 # NuDrop Data
 # TODO: setup actual db
-nudrop_db_bobs = {}
-nudrop_db_alices = {}
-nudrop_filestore = {}
+# nudrop_db_bobs = {}
+# nudrop_db_alices = {}
+# nudrop_filestore = {}
+
+rdb = redis.Redis()
 
 # Ursula
 SEEDNODE_URI = "localhost:11500"
@@ -48,10 +52,11 @@ def register_bob():
             "name": bob_name,
             "enc_key": pub_enc_key.hex(),
             "sig_key": pub_sig_key.hex(),
-            "known_alices": [],
         }
 
-        nudrop_db_bobs[bob_name] = data
+        # nudrop_db_bobs[bob_name] = data
+        rdb.hmset("db:bobs:" + bob_name, data)
+        rdb.sadd("db:bobs", bob_name)
 
         tmpl_data = {
             "priv": {
@@ -78,6 +83,7 @@ def register_alice():
         data = {
             "verifying_key": verifying_key.hex(),
             "encrypting_key": encrypting_key.hex(),
+            "checksum_address": alice.checksum_address,
         }
 
         return render_template("register_alice.html", data=data)
@@ -88,28 +94,46 @@ def register_alice():
 @app.route("/policy", methods=["POST", "GET"])
 def manage_policy():
     if request.method == "POST":
-        # TODO: work on making a form and get data from form
-        alice = Alice(
-            federated_only=True, domain=TEMPORARY_DOMAIN, known_nodes=[ursula]
+        bob_name = request.form["bob"]
+        code_name = request.form["codename"]
+        checksum_address = request.form["checksum_address"]
+        # passphrase = request.form["passphrase"]
+        passphrase = "passwordpasswordpasswordpasswordpassword"
+
+        bob_key = "db:bobs:" + bob_name
+        selected_bob = rdb.hgetall(bob_key)
+        import ipdb
+
+        # ipdb.set_trace()
+        remote_bob = Bob.from_public_keys(
+            encrypting_key=bytes.fromhex(selected_bob[b"enc_key"].decode("utf-8")),
+            verifying_key=bytes.fromhex(selected_bob[b"sig_key"].decode("utf-8")),
         )
+
+        policy_end_datetime = maya.now() + datetime.timedelta(days=1)
+        m, n = 2, 3
+
+        config_root = os.path.join("/", "tmp", "nucypher-alice-config")
+
+        alice_config = AliceConfiguration(
+            config_root=config_root,
+            federated_only=True,
+            domain=TEMPORARY_DOMAIN,
+            known_nodes=[ursula],
+            checksum_address=checksum_address,
+        )
+
+        alice_config.initialize(password=passphrase)
+        alice_config.keyring.unlock(password=passphrase)
+        alice = alice_config()
         alice.start_learning_loop(now=True)
         alice.block_until_number_of_known_nodes_is(
             8, timeout=30, learn_on_this_thread=True
         )
 
-        label = b"my/secret/label/snowy_codename"
+        label = bytes("nudrop/" + code_name, "utf-8")
 
         policy_public_key = alice.get_policy_encrypting_key_from_label(label)
-
-        selected_bob = nudrop_db_bobs["bob1"]
-
-        remote_bob = Bob.from_public_keys(
-            encrypting_key=selected_bob["enc_key"],
-            verifying_key=selected_bob["sig_key"],
-        )
-
-        policy_end_datetime = maya.now() + datetime.timedelta(days=1)
-        m, n = 2, 3
 
         policy = alice.grant(
             remote_bob, label, m=m, n=n, expiration=policy_end_datetime
@@ -119,17 +143,22 @@ def manage_policy():
 
         alice_verifying_key = bytes(alice.stamp)
 
-        nudrop_db_bobs["bob1"]["known_alices"].append(alice_verifying_key)
-        nudrop_db_alices[alice_verifying_key] = {
-            "policy_public_key": policy_public_key,
-            "label": label,
-            "files": [],
+        rdb.sadd("db:bob:" + bob_name, alice_verifying_key)
+        # nudrop_db_bobs["bob1"]["known_alices"].append(alice_verifying_key)
+        data = {
+            "verifying_key": alice_verifying_key.hex(),
+            "policy_public_key": policy_public_key.hex(),
+            "label": label.decode("utf-8"),
         }
+
+        rdb.hmset("db:alices:" + alice_verifying_key.hex(), data)
 
         alice.disenchant()
         del alice
+
+        return render_template("policy.html", policy_data=data)
     else:
-        list_of_bobs = [v for k, v in enumerate(nudrop_db_bobs)]
+        list_of_bobs = [x.decode("utf-8") for x in rdb.smembers("db:bobs")]
         data = {
             "bobs": list_of_bobs,
         }
