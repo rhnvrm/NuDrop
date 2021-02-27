@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h2>{% block title %}Encrypt{% endblock %}</h2>
+{% endblock %}
+
+{% block content %}
+  {% if data %}
+  Ciphertext:
+  {{ data.ciphertext }}
+  {% else %}
+    <form action="/encrypt" method="POST">
+        <label for="alice_verifying_key">Alice Verifying Key</label>
+        <input type="textarea" name="alice_verifying_key">
+
+        <label for="plaintext_data">Plaintext Data</label>
+        <input type="textarea" name="plaintext_data">
+        <br>
+        <button>Encrypt</button>
+    </form>
+
+  {% endif %}
+{% endblock %}

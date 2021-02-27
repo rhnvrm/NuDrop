@@ -102,7 +102,6 @@ def manage_policy():
 
         bob_key = "db:bobs:" + bob_name
         selected_bob = rdb.hgetall(bob_key)
-        import ipdb
 
         # ipdb.set_trace()
         remote_bob = Bob.from_public_keys(
@@ -167,23 +166,28 @@ def manage_policy():
 
 @app.route("/encrypt", methods=["POST", "GET"])
 def encrypt():
-    # TODO: wip encrypt
-    # Enrico now can enter the Alice verifying key that was shared with him by Alice.
-    alice_data_for_enrico = nudrop_db_alices[alice_verifying_key]
+    if request.method == "POST":
+        alice_verifying_key = request.form["alice_verifying_key"]
+        plaintext = request.form["plaintext_data"]
 
-    enrico = Enrico(policy_encrypting_key=alice_data_for_enrico["policy_public_key"])
-    plaintext = b"Extremely sensitive information."
-    ciphertext, _signature = enrico.encrypt_message(plaintext)
+        alice_data_for_enrico = rdb.hgetall("db:alices:" + alice_verifying_key)
 
-    # Enrico now adds it to NuDrop
-    # Let's create a new file in the data store abstraction
-    fname = "dummy_super_random_file_name"
-    nudrop_filestore[fname] = ciphertext
+        policy_encrypting_key = bytes.fromhex(
+            alice_data_for_enrico[b"policy_public_key"].decode("utf-8")
+        )
+        print(policy_encrypting_key)
+        enrico = Enrico(
+            policy_encrypting_key=UmbralPublicKey.from_bytes(policy_encrypting_key)
+        )
 
-    # Add it to the list of files registered for this Alice verifying key.
-    nudrop_db_alices[alice_verifying_key]["files"].append(fname)
+        ciphertext, _signature = enrico.encrypt_message(bytes(plaintext, "utf-8"))
+        # TODO: nudrop_db_alices[alice_verifying_key]["files"].append(fname)
 
-    del enrico
+        del enrico
+        data = {"ciphertext": ciphertext.ciphertext.hex()}
+        return render_template("encrypt.html", data=data)
+    else:
+        return render_template("encrypt.html")
 
 
 @app.route("/decrypt", methods=["POST", "GET"])
