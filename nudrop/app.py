@@ -12,6 +12,7 @@ from nucypher.config.characters import AliceConfiguration
 from nucypher.characters.lawful import Enrico as Enrico
 from nucypher.config.constants import TEMPORARY_DOMAIN
 from nucypher.crypto.powers import SigningPower, DecryptingPower
+from nucypher.crypto.keypairs import DecryptingKeypair, SigningKeypair
 from nucypher.utilities.logging import GlobalLoggerSettings
 from umbral.keys import UmbralPublicKey, UmbralPrivateKey
 
@@ -52,6 +53,7 @@ def register_bob():
             "name": bob_name,
             "enc_key": pub_enc_key.hex(),
             "sig_key": pub_sig_key.hex(),
+            "checksum_address": bob.
         }
 
         # nudrop_db_bobs[bob_name] = data
@@ -192,18 +194,71 @@ def encrypt():
 
 @app.route("/decrypt", methods=["POST", "GET"])
 def decrypt():
-    # TODO: wip encrypt
-    bob1_data = nudrop_db_bobs["bob1"]
+    if request.method == "GET":
+        return render_template("decrypt.html")
 
-    selected_alice_verifying_key = nudrop_db_bobs["bob1"]["known_alices"][0]
-    selected_alice_data = nudrop_db_alices[selected_alice_verifying_key]
+    bob_data = rdb.hgetall("db:bobs:" + "rohan")
 
-    bob.join_policy(selected_alice_data["label"], selected_alice_verifying_key)
+    # bob = Bob.from_public_keys(
+    #     encrypting_key=UmbralPublicKey.from_bytes(
+    #         bytes.fromhex(bob_data[b"enc_key"].decode("utf-8"))
+    #     ),
+    #     verifying_key=UmbralPublicKey.from_bytes(
+    #         bytes.fromhex(bob_data[b"sig_key"].decode("utf-8"))
+    #     ),
+    # )
+    # bob_enc_keypair = DecryptingKeypair(
+    #     private_key=bob_data[b"enc_key"].decode("utf-8")
+    # )
+    # bob_sig_keypair = SigningKeypair(private_key=bob_data[b"sig_key"].decode("utf-8"))
 
-    # Now Bob can retrieve the original message.
-    # Bob fetches one of the encrypted file.
-    selected_file_name = selected_alice_data["files"][0]
-    fetched_ciphertext = nudrop_filestore[selected_file_name]
+    bob_enc_keypair = DecryptingKeypair(
+        private_key=UmbralPrivateKey.from_bytes(
+            bytes.fromhex(
+                "870fbec26d9835214a6a5fd40864df41e7050952e268e31e91c180ac3d0164d9"
+            )
+        )
+    )
+
+    bob_sig_keypair = SigningKeypair(
+        private_key=UmbralPrivateKey.from_bytes(
+            bytes.fromhex(
+                "44cdf8bda13c6b0b03bc53013d6401e68c366ee6d66efbe052e3793f5e6e96a3"
+            )
+        )
+    )
+
+    enc_power = DecryptingPower(keypair=bob_enc_keypair)
+    sig_power = SigningPower(keypair=bob_sig_keypair)
+    power_ups = [enc_power, sig_power]
+
+    bob = Bob(
+        domain=TEMPORARY_DOMAIN,
+        federated_only=True,
+        crypto_power_ups=power_ups,
+        start_learning_now=True,
+        abort_on_learning_error=True,
+        known_nodes=[ursula],
+        save_metadata=False,
+    )
+
+    bob.join_policy(
+        bytes("nudrop/abc", "utf-8"),
+        UmbralPublicKey.from_bytes(
+            bytes.fromhex(
+                "0298e9c3e104f9327f61186ca5d36c093f1988b2721a130b1c9ac367f9b4a54359"
+            )
+        ),
+    )
+
+    fetched_ciphertext = "e95c323dd12c2d64ddacdd3e77ad07f7b45b2add8ac7e99e328ca979993ffe036a0ae09a6bb85e9ffb18c0508cf1c6b4b967de0a7a79a2c130de058ffd6419852d0719734061c80eeb6e829a3e691e6d48d65e0a66d5b8edb0c5501ff928f5222c8a50ff3fda2404ce0db47b1d5d91"
+    policy_public_key = (
+        "027df7b52decec9425563cca5000261aa3bd1ae16aa7d8d47792985a235acde580"
+    )
+    alice_verifying_key = (
+        "033078ad98dba310b4ef807ac5ba2d4f5e3481e8fd8954dce8baa028d5dde3bd4a"
+    )
+    label = "nudrop/codename"
 
     delivered_cleartexts = bob.retrieve(
         fetched_ciphertext,
@@ -213,8 +268,7 @@ def decrypt():
     )
 
     # We show that indeed this is the passage originally encrypted by Enrico.
-    print("Retrieved: {}".format(delivered_cleartexts[0]))
-    assert plaintext == delivered_cleartexts[0]
+    return "Retrieved: {}".format(delivered_cleartexts[0])
 
     bob.disenchant()
 
