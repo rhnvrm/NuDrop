@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h2>{% block title %}Policy{% endblock %}</h2>
+{% endblock %}
+
+{% block content %}
+  <form method="POST" action="/policy">
+      <label for="bob">Choose a bob:</label>
+      <select name="bob">
+          {% for b in data.bobs %}
+            {{ b }}
+          {% endfor %}
+      </select>
+  </form>
+{% endblock %}

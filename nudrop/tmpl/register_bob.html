@@ -1,38 +1,30 @@
-<!doctype html>
-<html class="no-js" lang="">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title>Register bob</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends 'base.html' %}
 
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-        <!-- Place favicon.ico in the root directory -->
+{% block header %}
+  <h2>{% block title %}Register Bob{% endblock %}</h2>
+{% endblock %}
 
-    </head>
-    <body>
-        <h2>Register Bob</h2>
-        {% if tmpl_data %} 
-        Name: {{ tmpl_data.pub.name }}
+{% block content %}
+    {% if tmpl_data %} 
+    Name: {{ tmpl_data.pub.name }}
+    <br>
+    <b>Priv</b>
+    <br>
+    Sig key: {{ tmpl_data.priv.sig_key }}
+    <br>
+    Enc key: {{ tmpl_data.priv.enc_key }}
+    <br> 
+    <b>Pub</b>
+    <br>
+    Sig key: {{ tmpl_data.pub.sig_key }}
+    <br>
+    Enc key: {{ tmpl_data.pub.enc_key }}
+    <br>
+    {%else%}
+    <form action="/register/bob" method="POST">
+        Name: <input type="text" name="name">
         <br>
-        <b>Priv</b>
-        <br>
-        Sig key: {{ tmpl_data.priv.sig_key }}
-        <br>
-        Enc key: {{ tmpl_data.priv.enc_key }}
-        <br> 
-        <b>Pub</b>
-        <br>
-        Sig key: {{ tmpl_data.pub.sig_key }}
-        <br>
-        Enc key: {{ tmpl_data.pub.enc_key }}
-        <br>
-        {%else%}
-        <form action="/register/bob" method="POST">
-            Name: <input type="text" name="name">
-            <button>Register</button>
-        </form>
-        {%endif%}
-    </body>
-</html>
+        <button>Register</button>
+    </form>
+    {%endif%}
+{% endblock %}

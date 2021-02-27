@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+    <head>
+        <title>{% block title %}{% endblock %} - NuDrop</title>
+        <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
+    </head>
+    <body>
+        <nav>
+          <h1>NuDrop</h1>
+          <ul>
+              <li><a href="/">Home</a></li>
+              <li>
+                  <a href="#">Register</a>
+                  <ul>
+                      <li><a href="/register/alice">Alice</a></li>
+                      <li><a href="/register/bob">Bob</a></li>
+                  </ul>
+              </li>
+              <li><a href="/policy">Create Policy</a></li>
+          </ul>
+        </nav>
+        <section class="content">
+          <header>
+            {% block header %}{% endblock %}
+          </header>
+          {% for message in get_flashed_messages() %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+          {% block content %}{% endblock %}
+        </section>
+    </body>          
+</html>

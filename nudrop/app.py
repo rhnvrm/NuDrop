@@ -107,6 +107,10 @@ def manage_policy():
             encrypting_key=selected_bob["enc_key"],
             verifying_key=selected_bob["sig_key"],
         )
+
+        policy_end_datetime = maya.now() + datetime.timedelta(days=1)
+        m, n = 2, 3
+
         policy = alice.grant(
             remote_bob, label, m=m, n=n, expiration=policy_end_datetime
         )
@@ -125,7 +129,11 @@ def manage_policy():
         alice.disenchant()
         del alice
     else:
-        pass
+        list_of_bobs = [v for k, v in enumerate(nudrop_db_bobs)]
+        data = {
+            "bobs": list_of_bobs,
+        }
+        return render_template("policy.html", data=data)
 
 
 @app.route("/encrypt", methods=["POST", "GET"])
@@ -176,3 +184,8 @@ def decrypt():
     assert plaintext == delivered_cleartexts[0]
 
     bob.disenchant()
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("home.html")
