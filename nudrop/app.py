@@ -53,7 +53,6 @@ def register_bob():
             "name": bob_name,
             "enc_key": pub_enc_key.hex(),
             "sig_key": pub_sig_key.hex(),
-            "checksum_address": bob.
         }
 
         # nudrop_db_bobs[bob_name] = data
