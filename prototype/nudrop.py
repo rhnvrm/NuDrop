@@ -5,10 +5,14 @@ import os
 import sys
 from pathlib import Path
 
+from web3.main import Web3
+
 from nucypher.characters.lawful import Alice, Bob, Ursula
 from nucypher.characters.lawful import Enrico as Enrico
 from nucypher.config.constants import TEMPORARY_DOMAIN
+from nucypher.utilities.ethereum import connect_web3_provider
 from nucypher.crypto.powers import SigningPower, DecryptingPower
+from nucypher.blockchain.eth.signers import Signer
 from nucypher.utilities.logging import GlobalLoggerSettings
 
 
@@ -20,21 +24,21 @@ from nucypher.utilities.logging import GlobalLoggerSettings
 GlobalLoggerSettings.set_log_level(log_level_name='debug')
 GlobalLoggerSettings.start_console_logging()
 
-# Start federated ursula using:
-# python ../nucypher/examples/run_demo_ursula_fleet.py`
-# if your ursulas are NOT running on your current host,
-# run like this: python finnegans-wake-demo.py 172.28.1.3:11500
-# otherwise the default will be fine.
+TESTNET = 'lynx'
+PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+SEEDNODE_URI = "https://lynx.nucypher.network:9151"
+# SIGNER_URI = 'clef://home/rhnvrm/.clef/clef.ipc'
+SIGNER_URI = 'keystore:///home/rhnvrm/.ethereum/keystore/UTC--2021-03-08T16-08-28.795969228Z--c968123712e0fde083b12e408da2db9b5c6d0772'
+wallet = Signer.from_signer_uri(SIGNER_URI)
 
-try:
-    SEEDNODE_URI = sys.argv[1]
-except IndexError:
-    SEEDNODE_URI = "localhost:11500"
+
+ALICE_ADDRESS = "0xC968123712E0fDE083b12e408da2Db9b5c6d0772"
+ALICE_PASSWORD = "nudroptesting"
 
 ##############################################
 # Ursula, the Untrusted Re-Encryption Proxy  #
 ##############################################
-ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI, federated_only=True)
+ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
 
 # Here are our Policy details.
 policy_end_datetime = maya.now() + datetime.timedelta(days=1)
@@ -57,7 +61,7 @@ nudrop_filestore = {}
 #################################
 
 # First there was Bob.
-bob = Bob(federated_only=True, domain=TEMPORARY_DOMAIN, known_nodes=[ursula])
+bob = Bob(domain=TESTNET, provider_uri=PROVIDER_URI)
 
 # Bob generates and gives his public keys to NuDrop.
 verifying_key = bob.public_keys(SigningPower)
@@ -77,13 +81,16 @@ nudrop_db_bobs["bob1"] = {
 # even an actual journalist          #
 ######################################
 
-alice = Alice(federated_only=True, domain=TEMPORARY_DOMAIN, known_nodes=[ursula])
+# Connect to the ethereum provider.
+connect_web3_provider(provider_uri=PROVIDER_URI)
 
+wallet = Signer.from_signer_uri(SIGNER_URI)
+password = ALICE_PASSWORD
+wallet.unlock_account(account=ALICE_ADDRESS, password=password)
 
-# Start node discovery and wait until 8 nodes are known in case
-# the fleet isn't fully spun up yet, as sometimes happens on CI.
-alice.start_learning_loop(now=True)
-alice.block_until_number_of_known_nodes_is(8, timeout=30, learn_on_this_thread=True)
+alice = Alice(checksum_address=ALICE_ADDRESS, signer=wallet, domain=TESTNET, provider_uri=PROVIDER_URI)
+
+alice_verifying_key = bytes(alice.stamp)
 
 # Alice can get the public key even before creating the policy.
 # From this moment on, any Data Source that knows the public key
@@ -103,7 +110,11 @@ selected_bob = nudrop_db_bobs["bob1"]
 
 remote_bob = Bob.from_public_keys(encrypting_key=selected_bob["encrypting_key"],
                                   verifying_key=selected_bob["verifying_key"])
-policy = alice.grant(remote_bob, label, m=m, n=n, expiration=policy_end_datetime)
+
+expiration = maya.now() + datetime.timedelta(hours=1)
+rate = Web3.toWei(50, 'gwei')
+m, n = 2, 3
+policy = alice.grant(remote_bob, label, m=m, n=n, rate=rate, expiration=policy_end_datetime)
 
 assert policy.public_key == policy_public_key
 policy.treasure_map_publisher.block_until_complete()

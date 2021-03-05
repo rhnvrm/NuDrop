@@ -29,8 +29,8 @@ GlobalLoggerSettings.start_console_logging()
 rdb = redis.Redis()
 
 # Ursula
-SEEDNODE_URI = "localhost:11500"
-ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI, federated_only=True)
+seed_uri = 'https://lynx.nucypher.network:9151'
+ursula = Ursula.from_seed_and_stake_info(seed_uri=seed_uri)
 
 # Flask
 app = Flask(__name__, template_folder="tmpl")

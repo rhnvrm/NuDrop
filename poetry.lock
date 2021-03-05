@@ -859,7 +859,7 @@ python-versions = "*"
 
 [[package]]
 name = "nucypher"
-version = "4.6.0"
+version = "4.7.1"
 description = "A proxy re-encryption network to empower privacy in decentralized systems."
 category = "main"
 optional = false
@@ -975,9 +975,9 @@ zipp = {version = "3.4.0", markers = "python_version >= \"3.6\""}
 [package.extras]
 alice = ["qrcode"]
 benchmark = ["appdirs (==1.4.4)", "bandit (==1.7.0)", "certifi (==2020.12.5)", "coverage (==5.3.1)", "decorator (==4.4.2)", "distlib (==0.3.1)", "filelock (==3.0.12)", "greenlet (==0.4.17)", "hypothesis (==5.49.0)", "iniconfig (==1.1.1)", "mypy-extensions (==0.4.3)", "mypy (==0.790)", "nodeenv (==1.5.0)", "pre-commit (==2.9.3)", "py-solc-x (==0.10.1)", "pyflakes (==2.2.0)", "pytest-cov (==2.10.1)", "pytest-mock (==3.5.0)", "pytest-timeout (==1.4.2)", "pytest-twisted (==1.13.2)", "pytest-xdist (==2.2.0)", "pytest (==6.2.1)", "pyyaml (==5.3.1)", "requests (==2.25.1)", "sortedcontainers (==2.3.0)", "typed-ast (==1.4.2)", "pytest-benchmark", "cfgv (==3.2.0)", "importlib-metadata (==3.3.0)", "typing-extensions (==3.7.4.3)", "pbr (==5.5.1)", "pyparsing (==2.4.7)", "toml (==0.10.2)", "six (==1.15.0)", "apipkg (==1.5)", "attrs (==20.3.0)", "execnet (==1.7.1)", "identify (==1.5.11)", "idna (==2.10)", "packaging (==20.8)", "pluggy (==0.13.1)", "py (==1.10.0)", "semantic-version (==2.8.5)", "smmap (==3.0.4)", "virtualenv (==20.2.2)", "chardet (==4.0.0)", "pytest-forked (==1.3.0)", "urllib3 (==1.26.2)", "gitdb (==4.0.5)", "gitpython (==3.1.12)", "stevedore (==3.3.0)", "zipp (==3.4.0)"]
-dev = ["stevedore (==3.3.0)", "appdirs (==1.4.4)", "bandit (==1.7.0)", "certifi (==2020.12.5)", "coverage (==5.3.1)", "decorator (==4.4.2)", "distlib (==0.3.1)", "filelock (==3.0.12)", "greenlet (==0.4.17)", "hypothesis (==5.49.0)", "iniconfig (==1.1.1)", "mypy-extensions (==0.4.3)", "mypy (==0.790)", "nodeenv (==1.5.0)", "pre-commit (==2.9.3)", "py-solc-x (==0.10.1)", "pyflakes (==2.2.0)", "pytest-cov (==2.10.1)", "pytest-mock (==3.5.0)", "pytest-timeout (==1.4.2)", "pytest-twisted (==1.13.2)", "pytest-xdist (==2.2.0)", "pytest (==6.2.1)", "pyyaml (==5.3.1)", "requests (==2.25.1)", "sortedcontainers (==2.3.0)", "typed-ast (==1.4.2)", "prometheus-client", "sentry-sdk", "qrcode", "cfgv (==3.2.0)", "importlib-metadata (==3.3.0)", "typing-extensions (==3.7.4.3)", "pbr (==5.5.1)", "pyparsing (==2.4.7)", "toml (==0.10.2)", "six (==1.15.0)", "apipkg (==1.5)", "attrs (==20.3.0)", "execnet (==1.7.1)", "identify (==1.5.11)", "idna (==2.10)", "packaging (==20.8)", "pluggy (==0.13.1)", "py (==1.10.0)", "semantic-version (==2.8.5)", "smmap (==3.0.4)", "virtualenv (==20.2.2)", "chardet (==4.0.0)", "pytest-forked (==1.3.0)", "urllib3 (==1.26.2)", "gitdb (==4.0.5)", "gitpython (==3.1.12)", "zipp (==3.4.0)"]
 bob = ["qrcode"]
 deploy = ["bumpversion", "ansible", "twine"]
+dev = ["appdirs (==1.4.4)", "bandit (==1.7.0)", "certifi (==2020.12.5)", "coverage (==5.3.1)", "decorator (==4.4.2)", "distlib (==0.3.1)", "filelock (==3.0.12)", "greenlet (==0.4.17)", "hypothesis (==5.49.0)", "iniconfig (==1.1.1)", "mypy-extensions (==0.4.3)", "mypy (==0.790)", "nodeenv (==1.5.0)", "pre-commit (==2.9.3)", "py-solc-x (==0.10.1)", "pyflakes (==2.2.0)", "pytest-cov (==2.10.1)", "pytest-mock (==3.5.0)", "pytest-timeout (==1.4.2)", "pytest-twisted (==1.13.2)", "pytest-xdist (==2.2.0)", "pytest (==6.2.1)", "pyyaml (==5.3.1)", "requests (==2.25.1)", "sortedcontainers (==2.3.0)", "typed-ast (==1.4.2)", "prometheus-client", "sentry-sdk", "qrcode", "cfgv (==3.2.0)", "importlib-metadata (==3.3.0)", "typing-extensions (==3.7.4.3)", "pbr (==5.5.1)", "pyparsing (==2.4.7)", "toml (==0.10.2)", "six (==1.15.0)", "apipkg (==1.5)", "attrs (==20.3.0)", "execnet (==1.7.1)", "identify (==1.5.11)", "idna (==2.10)", "packaging (==20.8)", "pluggy (==0.13.1)", "py (==1.10.0)", "semantic-version (==2.8.5)", "smmap (==3.0.4)", "virtualenv (==20.2.2)", "chardet (==4.0.0)", "pytest-forked (==1.3.0)", "urllib3 (==1.26.2)", "gitdb (==4.0.5)", "gitpython (==3.1.12)", "stevedore (==3.3.0)", "zipp (==3.4.0)"]
 ursula = ["prometheus-client", "sentry-sdk"]
 
 [[package]]
@@ -1749,7 +1749,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "00cc8c2b7e46df15372b28bfa7790787275af6da18f03de5dd6d632678915a20"
+content-hash = "d9071146c6e0296b8ce55a90bfca4ceb3af13c91eda8e5ed4016c742ff8d85b1"
 
 [metadata.files]
 appdirs = [
@@ -2197,8 +2197,8 @@ netaddr = [
     {file = "netaddr-0.8.0.tar.gz", hash = "sha256:d6cc57c7a07b1d9d2e917aa8b36ae8ce61c35ba3fcd1b83ca31c5a0ee2b5a243"},
 ]
 nucypher = [
-    {file = "nucypher-4.6.0-py3-none-any.whl", hash = "sha256:ed7e806b1e18d318fd1dd714eed6c8e40a1df2e56cc513fcc74ef02789732c8e"},
-    {file = "nucypher-4.6.0.tar.gz", hash = "sha256:5726e639996f584d924d85f86dfffc75e3deac8a246f1ff332cc5c1000d91069"},
+    {file = "nucypher-4.7.1-py3-none-any.whl", hash = "sha256:cffc8525640216665c3b6ec6fe6181f9f2930e7b099f8c4550aeb04c130c22a3"},
+    {file = "nucypher-4.7.1.tar.gz", hash = "sha256:03dc046a62813fc41db18a976d6e1086d3fdf14017e1349a81e7079d4a5acdac"},
 ]
 parsimonious = [
     {file = "parsimonious-0.8.1.tar.gz", hash = "sha256:3add338892d580e0cb3b1a39e4a1b427ff9f687858fdd61097053742391a9f6b"},
