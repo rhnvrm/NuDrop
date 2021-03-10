@@ -16,7 +16,18 @@ import flask
 from uuid import uuid4
 from flask import request, current_app
 
-app = Flask(__name__, template_folder=".")
+class CustomFlask(Flask):
+    jinja_options = Flask.jinja_options.copy()
+    jinja_options.update(dict(
+        block_start_string='<%',
+        block_end_string='%>',
+        variable_start_string='%%',
+        variable_end_string='%%',
+        comment_start_string='<#',
+        comment_end_string='#>',
+    ))
+
+app = CustomFlask(__name__, template_folder=".")
 cors = CORS(app)
 socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins='*', ping_timeout=60000)
 
