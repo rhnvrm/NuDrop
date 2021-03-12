@@ -24,18 +24,37 @@
         </nav>
         <section class="content">
             <div id="app">
+                <div>
                 User Address: {{ user_address }}
+                </div>
+
+                <div>
+                <button v-on:click="prototype">Run prototype</button>
+                </div>
+                <div>{{ prototype_data }}</div>
             </div>
         </section>
     </section>
 
     <script src="https://cdn.socket.io/3.1.3/socket.io.min.js" integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <script type="text/javascript" charset="utf-8">
+
         var app = new Vue({
             el: '#app',
             data: {
                 user_address: "pending",
+                prototype_data: "pending",
+            },
+            methods: {
+                prototype: function () {
+                    axios
+                    .post('/api/prototype',{
+                        alice_address: this.user_address
+                    })
+                    .then(response => (this.prototype_data = response.data))
+                }
             }
         })
 

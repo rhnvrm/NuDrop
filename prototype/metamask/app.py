@@ -1,20 +1,28 @@
 from typing import List
+from uuid import uuid4
 
+import flask
+import flask_socketio
 from eth_utils.address import is_address, to_checksum_address
 from eth_utils.applicators import apply_formatters_to_dict
-from flask import Flask, render_template
+from flask import Flask, current_app, render_template, request
 from flask_cors import CORS
-import flask_socketio
 from flask_socketio import SocketIO, emit
 from hexbytes.main import HexBytes
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
 from nucypher.blockchain.eth.signers import Signer
+from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
+from nucypher.utilities.ethereum import connect_web3_provider
 from nucypher.utilities.logging import GlobalLoggerSettings
 from web3.main import Web3
-import flask
-from uuid import uuid4
-from flask import request, current_app
+import datetime
+import maya
+from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
+
+GlobalLoggerSettings.start_console_logging()
+GlobalLoggerSettings.set_log_level('debug')
+
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -27,16 +35,21 @@ class CustomFlask(Flask):
         comment_end_string='#>',
     ))
 
+
 app = CustomFlask(__name__, template_folder=".")
 cors = CORS(app)
-socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins='*', ping_timeout=60000)
+socketio = SocketIO(app, logger=True, engineio_logger=True,
+                    cors_allowed_origins='*', ping_timeout=60000)
+
 
 class NuDropException(Exception):
     pass
 
+
 def sign_callback(sign_type, message_dict):
     print(sign_type, message_dict)
     return None
+
 
 class MetaMask(Signer):
     SIGN_DATA_FOR_VALIDATOR = 'data/validator'
@@ -85,7 +98,8 @@ class MetaMask(Signer):
             transaction_dict['to'] = None
         elif transaction_dict['to']:
             formatters['to'] = to_checksum_address
-        formatted_transaction = apply_formatters_to_dict(formatters, transaction_dict)
+        formatted_transaction = apply_formatters_to_dict(
+            formatters, transaction_dict)
         txHash = self.sign_callback('transaction', formatted_transaction)
         print(txHash)
         return txHash
@@ -102,7 +116,8 @@ class MetaMask(Signer):
                              f'Valid types are {self.SIGN_DATA_CONTENT_TYPES}')
         if content_type == self.SIGN_DATA_FOR_VALIDATOR:
             if not validator_address or validator_address == NULL_ADDRESS:
-                raise ValueError('When using the intended validator type, a validator address is required.')
+                raise ValueError(
+                    'When using the intended validator type, a validator address is required.')
             data = {'address': validator_address, 'message': message}
         elif content_type == self.SIGN_DATA_FOR_ECRECOVER:
             data = {'address': account, 'message': message}
@@ -112,20 +127,53 @@ class MetaMask(Signer):
         print(signature)
         return HexBytes(signature)
 
+
+signer = MetaMask(sign_callback=sign_callback)
+TESTNET = 'lynx'
+SEEDNODE_URI = "https://lynx.nucypher.network:9151"
+PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+BlockchainInterfaceFactory.initialize_interface(provider_uri=PROVIDER_URI)
+
+ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
+
+
 @socketio.on('on_load')
 def handle_message(data):
     emit("prompt_login")
 
+
 @app.route("/", methods=["GET"])
 def home():
-    print("hi")
-    signer = MetaMask(testnet=True, sign_callback=sign_callback)
     return render_template("index.html")
 
-if __name__ == '__main__':
-    GlobalLoggerSettings.start_console_logging()
-    GlobalLoggerSettings.set_log_level('debug')
 
+@app.route("/api/prototype", methods=["POST"])
+def prototype():
+    data = request.get_json()
+    address = Web3.toChecksumAddress(data["alice_address"])
+    alice = Alice(checksum_address=address,
+                  signer=signer, domain=TESTNET, provider_uri=PROVIDER_URI)
+    bob = Bob(checksum_address=address,
+              signer=signer, domain=TESTNET, provider_uri=PROVIDER_URI)
+    alice_verifying_key = bytes(alice.stamp)
+    label = b"my/secret/label/nudrop/test"
+    expiration = maya.now() + datetime.timedelta(days=1)
+    rate = Web3.toWei(50, 'gwei')
+    m, n = 2, 3
+    policy = alice.grant(bob, label, m=m, n=n, rate=rate, expiration=expiration)
+    policy.treasure_map_publisher.block_until_complete()
+    enrico = Enrico(policy_encrypting_key=policy.public_key)
+    plaintext = b"Extremely sensitive information."
+    ciphertext, _signature = enrico.encrypt_message(plaintext)
+    bob.join_policy(label, bytes(alice.stamp))
+    delivered_cleartexts = bob.retrieve(ciphertext,
+                                    policy_encrypting_key=policy.public_key,
+                                    alice_verifying_key=alice_verifying_key,
+                                    label=label)
+    return {"status": "success", "data": delivered_cleartexts}
+
+
+if __name__ == '__main__':
     socketio.run(app,
                  host='127.0.0.1',
                  port='5000',
