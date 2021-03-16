@@ -19,6 +19,7 @@ from web3.main import Web3
 import datetime
 import maya
 from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
+import redis
 
 GlobalLoggerSettings.start_console_logging()
 GlobalLoggerSettings.set_log_level('debug')
@@ -40,14 +41,29 @@ app = CustomFlask(__name__, template_folder=".")
 cors = CORS(app)
 socketio = SocketIO(app, logger=True, engineio_logger=True,
                     cors_allowed_origins='*', ping_timeout=60000)
+rdb = redis.Redis()
 
 
-class NuDropException(Exception):
-    pass
+def sign_transaction_cb(sid, message):
+    print("YOLO TX", message)
+    ev = "sign_transaction"
+    message['_id'] = str(uuid4())
+    socketio.emit(ev, message, room=sid)
+    p = rdb.pubsub()
+    p.subscribe("signtx:"+message['_id'])
+    # confirmation = p.get_message()
+    # print(confirmation)
+    # if confirmation["type"] != "subscribe":
+    #     pass # TODO handle an exception here
+    print("WAITING FOR MESSAGE")
+    msg = p.get_message()
+    print("YOLO MESSAGE", msg)
+    resp = msg["data"]["resp"]
+    return None
 
 
-def sign_callback(sign_type, message_dict):
-    print(sign_type, message_dict)
+def sign_message_cb(sid, message):
+    print("YOLO MSG", message)
     return None
 
 
@@ -57,9 +73,11 @@ class MetaMask(Signer):
     SIGN_DATA_FOR_ECRECOVER = 'text/plain'
     DEFAULT_CONTENT_TYPE = SIGN_DATA_FOR_ECRECOVER
 
-    def __init__(self, testnet: bool = False, sign_callback=None):
+    def __init__(self, testnet: bool = False, sid=None, sign_message_cb=None, sign_transaction_cb=None):
         super().__init__()
-        self.sign_callback = sign_callback
+        self.sid = sid
+        self.sign_message_cb = sign_message_cb
+        self.sign_transaction_cb = sign_transaction_cb
         self.testnet = testnet
 
     @classmethod
@@ -100,8 +118,9 @@ class MetaMask(Signer):
             formatters['to'] = to_checksum_address
         formatted_transaction = apply_formatters_to_dict(
             formatters, transaction_dict)
-        txHash = self.sign_callback('transaction', formatted_transaction)
-        print(txHash)
+        txHash = self.sign_transaction_cb(self.sid, formatted_transaction)
+        print("MYTXHASH", txHash)
+
         return txHash
 
     @validate_checksum_address
@@ -123,12 +142,11 @@ class MetaMask(Signer):
             data = {'address': account, 'message': message}
         else:
             raise NotImplementedError
-        signature = self.sign_callback('message', data)
-        print(signature)
+        signature = self.sign_message_cb(self.sid, data)
+        print("MYSIGN", signature)
         return HexBytes(signature)
 
 
-signer = MetaMask(sign_callback=sign_callback)
 TESTNET = 'lynx'
 SEEDNODE_URI = "https://lynx.nucypher.network:9151"
 PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
@@ -139,7 +157,15 @@ ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
 
 @socketio.on('on_load')
 def handle_message(data):
-    emit("prompt_login")
+    emit("prompt_login", {
+        "socket_id": request.sid
+    })
+
+
+@socketio.on('signtx_resp')
+def handle_message(data):
+    print("RECV", data)
+    p = rdb.publish("sign_tx:"+data["sid"], data["resp"])
 
 
 @app.route("/", methods=["GET"])
@@ -151,6 +177,9 @@ def home():
 def prototype():
     data = request.get_json()
     address = Web3.toChecksumAddress(data["alice_address"])
+    signer = MetaMask(sid=data["socket_id"], sign_message_cb=sign_message_cb,
+                      sign_transaction_cb=sign_transaction_cb)
+
     alice = Alice(checksum_address=address,
                   signer=signer, domain=TESTNET, provider_uri=PROVIDER_URI)
     bob = Bob(checksum_address=address,
@@ -160,16 +189,17 @@ def prototype():
     expiration = maya.now() + datetime.timedelta(days=1)
     rate = Web3.toWei(50, 'gwei')
     m, n = 2, 3
-    policy = alice.grant(bob, label, m=m, n=n, rate=rate, expiration=expiration)
+    policy = alice.grant(bob, label, m=m, n=n, rate=rate,
+                         expiration=expiration)
     policy.treasure_map_publisher.block_until_complete()
     enrico = Enrico(policy_encrypting_key=policy.public_key)
     plaintext = b"Extremely sensitive information."
     ciphertext, _signature = enrico.encrypt_message(plaintext)
     bob.join_policy(label, bytes(alice.stamp))
     delivered_cleartexts = bob.retrieve(ciphertext,
-                                    policy_encrypting_key=policy.public_key,
-                                    alice_verifying_key=alice_verifying_key,
-                                    label=label)
+                                        policy_encrypting_key=policy.public_key,
+                                        alice_verifying_key=alice_verifying_key,
+                                        label=label)
     return {"status": "success", "data": delivered_cleartexts}
 
 

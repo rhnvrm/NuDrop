@@ -1,43 +1,48 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Metamask signer</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.min.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 </head>
+
 <body>
-    
+
     <section class="section">
         <div class="container">
-          <h1 class="title">
-            NuDrop
-          </h1>
-          <p class="subtitle">
-            Yet another FOSS Securedrop using the NuCypher network!
-          </p>
+            <h1 class="title">
+                NuDrop
+            </h1>
+            <p class="subtitle">
+                Yet another FOSS Securedrop using the NuCypher network!
+            </p>
         </div>
         <nav>
-          <h1>NuDrop</h1>
-          <ul>
-              <li><a href="/">Home</a></li>
-          </ul>
+            <h1>NuDrop</h1>
+            <ul>
+                <li><a href="/">Home</a></li>
+            </ul>
         </nav>
         <section class="content">
             <div id="app">
                 <div>
-                User Address: {{ user_address }}
+                    User Address: {{ user_address }}
                 </div>
 
                 <div>
-                <button v-on:click="prototype">Run prototype</button>
+                    <button v-on:click="prototype">Run prototype</button>
                 </div>
                 <div>{{ prototype_data }}</div>
             </div>
         </section>
     </section>
 
-    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js" integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh" crossorigin="anonymous"></script>
+    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js"
+        integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh"
+        crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -46,36 +51,45 @@
             data: {
                 user_address: "pending",
                 prototype_data: "pending",
+                socket_id: "pending",
             },
             methods: {
                 prototype: function () {
                     axios
-                    .post('/api/prototype',{
-                        alice_address: this.user_address
-                    })
-                    .then(response => (this.prototype_data = response.data))
+                        .post('/api/prototype', {
+                            alice_address: this.user_address,
+                            socket_id: this.socket_id
+                        })
+                        .then(response => (this.prototype_data = response.data))
                 }
             }
         })
 
         // TODO: Make sure you show if metamask is not there
         ethereum = window.ethereum
+        web3 = new Web3(window.ethereum);
 
         const socket = io();
 
         socket.emit('on_load', {});
 
         socket.on('prompt_login', (data) => {
-            var _ = async() => {
-                let result = await 
-                console.log(result)
-            }
-            ethereum.request({ method: 'eth_requestAccounts' }).then(function(data) {
+            app.socket_id = data.socket_id
+
+            web3.eth.requestAccounts().then(function (data) {
                 app.user_address = data[0] || "Not available"
+            })
+        });
+
+        socket.on('sign_transaction', (data) => {
+            console.log("YALA", data)
+            web3.eth.signTransaction(data).then(function (data) {
+                console.log(data)
             })
         });
 
 
     </script>
 </body>
+
 </html>
