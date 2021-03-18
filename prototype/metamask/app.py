@@ -20,6 +20,8 @@ import datetime
 import maya
 from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 import redis
+import time
+import json
 
 GlobalLoggerSettings.start_console_logging()
 GlobalLoggerSettings.set_log_level('debug')
@@ -47,19 +49,27 @@ rdb = redis.Redis()
 def sign_transaction_cb(sid, message):
     print("YOLO TX", message)
     ev = "sign_transaction"
-    message['_id'] = str(uuid4())
     socketio.emit(ev, message, room=sid)
-    p = rdb.pubsub()
-    p.subscribe("signtx:"+message['_id'])
-    # confirmation = p.get_message()
+    p = rdb.pubsub(ignore_subscribe_messages=True)
+    p.subscribe("sign_tx:"+sid)
+    # confirmation =
     # print(confirmation)
     # if confirmation["type"] != "subscribe":
     #     pass # TODO handle an exception here
     print("WAITING FOR MESSAGE")
-    msg = p.get_message()
-    print("YOLO MESSAGE", msg)
-    resp = msg["data"]["resp"]
-    return None
+    message, data = None, None
+    timeout = 200
+    stop_time = time.time() + timeout
+
+    # https://stackoverflow.com/questions/7875008/how-to-implement-rediss-pubsub-timeout-feature
+    while time.time() < stop_time:
+        message = p.get_message(timeout=stop_time - time.time())
+        if message:
+            break
+
+    print("YOLO MESSAGE", message)
+    txhash = message["data"]
+    return txhash
 
 
 def sign_message_cb(sid, message):

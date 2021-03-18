@@ -83,8 +83,14 @@
 
         socket.on('sign_transaction', (data) => {
             console.log("YALA", data)
-            web3.eth.signTransaction(data).then(function (data) {
+            web3.eth.sendTransaction(data).then(function (data) {
                 console.log(data)
+                txhash = data.transactionHash
+
+                socket.emit("signtx_resp", {
+                    sid: app.socket_id,
+                    resp: txhash,
+                })
             })
         });
 
