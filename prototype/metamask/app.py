@@ -50,12 +50,10 @@ def sign_transaction_cb(sid, message):
     print("YOLO TX", message)
     ev = "sign_transaction"
     socketio.emit(ev, message, room=sid)
+
     p = rdb.pubsub(ignore_subscribe_messages=True)
     p.subscribe("sign_tx:"+sid)
-    # confirmation =
-    # print(confirmation)
-    # if confirmation["type"] != "subscribe":
-    #     pass # TODO handle an exception here
+
     print("WAITING FOR MESSAGE")
     message, data = None, None
     timeout = 200
@@ -203,7 +201,7 @@ def prototype():
                          expiration=expiration)
     policy.treasure_map_publisher.block_until_complete()
     enrico = Enrico(policy_encrypting_key=policy.public_key)
-    plaintext = b"Extremely sensitive information."
+    plaintext = b"Extremely sensitive information." 
     ciphertext, _signature = enrico.encrypt_message(plaintext)
     bob.join_policy(label, bytes(alice.stamp))
     delivered_cleartexts = bob.retrieve(ciphertext,

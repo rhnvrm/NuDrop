@@ -34,6 +34,8 @@
                     <button v-on:click="prototype">Run prototype</button>
                 </div>
                 <div>{{ prototype_data }}</div>
+
+                <textarea style="width:500px;height:400px" v-model="log_data" placeholder="logs"></textarea>
             </div>
         </section>
     </section>
@@ -43,6 +45,7 @@
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/ethereumjs/browser-builds/dist/ethereumjs-tx/ethereumjs-tx-1.3.3.min.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -52,6 +55,7 @@
                 user_address: "pending",
                 prototype_data: "pending",
                 socket_id: "pending",
+                log_data: "logs\n",
             },
             methods: {
                 prototype: function () {
@@ -75,6 +79,7 @@
 
         socket.on('prompt_login', (data) => {
             app.socket_id = data.socket_id
+            app.log_data += JSON.stringify(data.socket_id) + "\n"
 
             web3.eth.requestAccounts().then(function (data) {
                 app.user_address = data[0] || "Not available"
@@ -82,16 +87,36 @@
         });
 
         socket.on('sign_transaction', (data) => {
-            console.log("YALA", data)
-            web3.eth.sendTransaction(data).then(function (data) {
-                console.log(data)
-                txhash = data.transactionHash
+            app.log_data += "\n\nINTX\n"+ JSON.stringify(data)
+
+            const txData = {
+                nonce: data.nonce,
+                gasPrice: data.gasPrice,
+                gasLimit: data.gas,
+                to: data.to,
+                value: data.value,
+                data: data.data,
+                v: data.chainId,
+                r: 0,
+                s: 0,
+            }
+
+            app.log_data += "\n\nTXDATA\n"+ JSON.stringify(txData)
+
+            let tx = new ethereumjs.Tx(txData)
+            let serializedTx = "0x"+tx.hash().toString('hex')
+            app.log_data += "\n\nTX\n"+ JSON.stringify(tx)
+            app.log_data += "\n\nSTX\n"+ JSON.stringify(serializedTx)
+
+            web3.eth.sign(serializedTx, data.from, (function (err, data) {
+                app.log_data += "\n\nresp\n"+JSON.stringify(data)
+                txhash = data
 
                 socket.emit("signtx_resp", {
                     sid: app.socket_id,
                     resp: txhash,
                 })
-            })
+            })).then(alert)
         });
 
 
