@@ -1,27 +1,31 @@
+import binascii
+import datetime
+import json
+import time
 from typing import List
 from uuid import uuid4
 
 import flask
 import flask_socketio
+import maya
+import redis
+import rlp
+from eth_account._utils.transactions import Transaction, assert_valid_fields
 from eth_utils.address import is_address, to_checksum_address
 from eth_utils.applicators import apply_formatters_to_dict
+from eth_utils.conversions import to_int
 from flask import Flask, current_app, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from hexbytes.main import HexBytes
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
+from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 from nucypher.blockchain.eth.signers import Signer
 from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
 from nucypher.utilities.ethereum import connect_web3_provider
 from nucypher.utilities.logging import GlobalLoggerSettings
 from web3.main import Web3
-import datetime
-import maya
-from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
-import redis
-import time
-import json
 
 GlobalLoggerSettings.start_console_logging()
 GlobalLoggerSettings.set_log_level('debug')
@@ -126,10 +130,17 @@ class MetaMask(Signer):
             formatters['to'] = to_checksum_address
         formatted_transaction = apply_formatters_to_dict(
             formatters, transaction_dict)
-        txHash = self.sign_transaction_cb(self.sid, formatted_transaction)
-        print("MYTXHASH", txHash)
+        txData = self.sign_transaction_cb(self.sid, formatted_transaction)
+        print("MYTXHASH", txData)
+        _r = txData[1:33]
+        _s = txData[33:]
+        _v = txData[2 * transaction_dict["chainId"] + 8]
+        signed_transaction = Transaction(v=to_int(_v),  # type: int
+                                         r=to_int(_r),  # bytes -> int
+                                         s=to_int(_s),  # bytes -> int
+                                         **transaction_dict)
 
-        return txHash
+        return HexBytes(rlp.encode(signed_transaction))
 
     @validate_checksum_address
     def sign_message(self, account: str, message: bytes, content_type: str = None, validator_address: str = None, **kwargs) -> HexBytes:
@@ -157,10 +168,17 @@ class MetaMask(Signer):
 
 TESTNET = 'lynx'
 SEEDNODE_URI = "https://lynx.nucypher.network:9151"
-PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+# PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+PROVIDER_URI = "https://eth-goerli.alchemyapi.io/v2/N_84Pr8pjQPI7QK0zFxJFJQ6-Vlue6gQ"
+
 BlockchainInterfaceFactory.initialize_interface(provider_uri=PROVIDER_URI)
 
-ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
+
+def newU():
+    return Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
+
+
+ursulas = [newU()]
 
 
 @socketio.on('on_load')
@@ -196,12 +214,12 @@ def prototype():
     label = b"my/secret/label/nudrop/test"
     expiration = maya.now() + datetime.timedelta(days=1)
     rate = Web3.toWei(50, 'gwei')
-    m, n = 2, 3
+    m, n = 1, 1
     policy = alice.grant(bob, label, m=m, n=n, rate=rate,
-                         expiration=expiration)
+                         expiration=expiration, handpicked_ursulas=ursulas)
     policy.treasure_map_publisher.block_until_complete()
     enrico = Enrico(policy_encrypting_key=policy.public_key)
-    plaintext = b"Extremely sensitive information." 
+    plaintext = b"Extremely sensitive information."
     ciphertext, _signature = enrico.encrypt_message(plaintext)
     bob.join_policy(label, bytes(alice.stamp))
     delivered_cleartexts = bob.retrieve(ciphertext,
