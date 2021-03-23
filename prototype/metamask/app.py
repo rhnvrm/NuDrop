@@ -135,12 +135,17 @@ class MetaMask(Signer):
         _r = txData[1:33]
         _s = txData[33:]
         _v = txData[2 * transaction_dict["chainId"] + 8]
+        # avoid unknown kwargs
+        del transaction_dict["chainId"]
+        del transaction_dict["from"]
         signed_transaction = Transaction(v=to_int(_v),  # type: int
                                          r=to_int(_r),  # bytes -> int
                                          s=to_int(_s),  # bytes -> int
                                          **transaction_dict)
-
-        return HexBytes(rlp.encode(signed_transaction))
+        print("signed_tx", signed_transaction)
+        rlpstx = rlp.encode(signed_transaction, infer_serializer=False)
+        print("rlp_encoded_hex_bytes",HexBytes(rlpstx))
+        return HexBytes(rlpstx)
 
     @validate_checksum_address
     def sign_message(self, account: str, message: bytes, content_type: str = None, validator_address: str = None, **kwargs) -> HexBytes:
