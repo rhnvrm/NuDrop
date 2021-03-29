@@ -1,0 +1,166 @@
+.editor {
+    position: relative;
+
+    box-shadow: inset 0 0.0625em 0.125em rgb(10 10 10 / 5%);
+    border: 1px solid transparent;
+    border-color: #dbdbdb;
+    border-radius: 4px;
+    padding: 0.5em;
+    &__content {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        word-break: break-word;
+        min-height: 20em;
+
+        * {
+            caret-color: currentColor;
+        }
+
+        .ProseMirror{
+            min-height: 20em;
+        }
+
+        pre {
+            padding: 0.7rem 1rem;
+            border-radius: 5px;
+            background: #000;
+            color: #fff;
+            font-size: 0.8rem;
+            overflow-x: auto;
+
+            code {
+                display: block;
+            }
+        }
+
+        p code {
+            padding: 0.2rem 0.4rem;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: rgba(#000, 0.1);
+            color: rgba(#000, 0.8);
+        }
+
+        ul,
+        ol {
+            padding-left: 1rem;
+        }
+
+        ul {
+            list-style-type: disc;
+        }
+
+        ol {
+            list-style-type: decimal;
+        }
+
+        li > p,
+        li > ol,
+        li > ul {
+            margin: 0;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        blockquote {
+            border-left: 3px solid rgba(#000, 0.1);
+            color: rgba(#000, 0.8);
+            padding-left: 0.8rem;
+            font-style: italic;
+
+            p {
+                margin: 0;
+            }
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 3px;
+        }
+
+        table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 100%;
+            margin: 0;
+            overflow: hidden;
+
+            td,
+            th {
+                min-width: 1em;
+                border: 2px solid #fefefe;
+                padding: 3px 5px;
+                vertical-align: top;
+                box-sizing: border-box;
+                position: relative;
+                > * {
+                    margin-bottom: 0;
+                }
+            }
+
+            th {
+                font-weight: bold;
+                text-align: left;
+            }
+
+            .selectedCell:after {
+                z-index: 2;
+                position: absolute;
+                content: "";
+                left: 0;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                background: rgba(200, 200, 255, 0.4);
+                pointer-events: none;
+            }
+
+            .column-resize-handle {
+                position: absolute;
+                right: -2px;
+                top: 0;
+                bottom: 0;
+                width: 4px;
+                z-index: 20;
+                background-color: #adf;
+                pointer-events: none;
+            }
+        }
+
+        .tableWrapper {
+            margin: 1em 0;
+            overflow-x: auto;
+        }
+
+        .resize-cursor {
+            cursor: ew-resize;
+            cursor: col-resize;
+        }
+
+        h1 {
+            font-size: 1.7em;
+        }
+        h2 {
+            font-size: 1.5em;
+        }
+        h3 {
+            font-size: 1.3em;
+        }
+    }
+}
+
+.menubar__button {
+    font-weight: 700;
+    display: -webkit-inline-box;
+    display: inline-flex;
+    background: transparent;
+    border: 0;
+    color: #000;
+    padding: 0.2rem 0.5rem;
+    margin-right: 0.2rem;
+    border-radius: 3px;
+    cursor: pointer;
+}
