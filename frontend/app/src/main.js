@@ -5,6 +5,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import App from './App.vue'
 import Encrypt from './components/Encrypt.vue'
+import PolicyCreate from './components/PolicyCreate.vue'
 import Home from './components/Home.vue'
 
 Vue.config.productionTip = false
@@ -14,6 +15,7 @@ Vue.use(VueRouter)
 const routes = [
   { path: '/', component: Home },
   { path: '/encrypt', component: Encrypt },
+  { path: '/policy/create', component: PolicyCreate },
 ]
 
 const router = new VueRouter({

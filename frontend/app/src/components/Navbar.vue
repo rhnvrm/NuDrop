@@ -10,7 +10,7 @@
                 Home
             </b-navbar-item>
             <b-navbar-dropdown hoverable="true" label="Policy">
-                <b-navbar-item href="#">
+                <b-navbar-item  tag="router-link" to="/policy/create">
                     Create
                 </b-navbar-item>
             </b-navbar-dropdown>
