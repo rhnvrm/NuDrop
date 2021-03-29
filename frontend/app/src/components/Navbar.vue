@@ -18,7 +18,7 @@
                 <b-navbar-item tag="router-link" to="/encrypt">
                     Encrypt
                 </b-navbar-item>
-                <b-navbar-item href="#">
+                <b-navbar-item tag="router-link" to="/me/files">
                     My Files
                 </b-navbar-item>
             </b-navbar-dropdown>
