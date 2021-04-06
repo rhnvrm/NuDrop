@@ -130,22 +130,24 @@ class MetaMask(Signer):
             formatters['to'] = to_checksum_address
         formatted_transaction = apply_formatters_to_dict(
             formatters, transaction_dict)
+        print("formatted_tx", formatted_transaction)
         txData = self.sign_transaction_cb(self.sid, formatted_transaction)
         print("MYTXHASH", txData)
-        _r = txData[1:33]
-        _s = txData[33:]
-        _v = txData[2 * transaction_dict["chainId"] + 8]
-        # avoid unknown kwargs
-        del transaction_dict["chainId"]
-        del transaction_dict["from"]
-        signed_transaction = Transaction(v=to_int(_v),  # type: int
-                                         r=to_int(_r),  # bytes -> int
-                                         s=to_int(_s),  # bytes -> int
-                                         **transaction_dict)
-        print("signed_tx", signed_transaction)
-        rlpstx = rlp.encode(signed_transaction, infer_serializer=False)
-        print("rlp_encoded_hex_bytes",HexBytes(rlpstx))
-        return HexBytes(rlpstx)
+        # _r = txData[1:33]
+        # _s = txData[33:]
+        # _v = txData[2 * transaction_dict["chainId"] + 8]
+        # # avoid unknown kwargs
+        # del transaction_dict["chainId"]
+        # del transaction_dict["from"]
+        # signed_transaction = Transaction(v=to_int(_v),  # type: int
+        #                                  r=to_int(_r),  # bytes -> int
+        #                                  s=to_int(_s),  # bytes -> int
+        #                                  **transaction_dict)
+        # print("signed_tx", signed_transaction)
+        # rlpstx = rlp.encode(signed_transaction, infer_serializer=False)
+        # print("rlp_encoded_hex_bytes",HexBytes(rlpstx))
+        # return HexBytes(rlpstx)
+        return HexBytes(txData)
 
     @validate_checksum_address
     def sign_message(self, account: str, message: bytes, content_type: str = None, validator_address: str = None, **kwargs) -> HexBytes:

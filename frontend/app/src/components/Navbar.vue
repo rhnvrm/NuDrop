@@ -9,12 +9,12 @@
             <b-navbar-item tag="router-link" to="/">
                 Home
             </b-navbar-item>
-            <b-navbar-dropdown hoverable="true" label="Policy">
+            <b-navbar-dropdown :hoverable="true" label="Policy">
                 <b-navbar-item  tag="router-link" to="/policy/create">
                     Create
                 </b-navbar-item>
             </b-navbar-dropdown>
-            <b-navbar-dropdown hoverable="true" label="Files">
+            <b-navbar-dropdown :hoverable="true" label="Files">
                 <b-navbar-item tag="router-link" to="/encrypt">
                     Encrypt
                 </b-navbar-item>
@@ -22,7 +22,7 @@
                     My Files
                 </b-navbar-item>
             </b-navbar-dropdown>
-            <b-navbar-dropdown hoverable="true" label="Info">
+            <b-navbar-dropdown :hoverable="true" label="Info">
                 <b-navbar-item href="#">
                     About
                 </b-navbar-item>
