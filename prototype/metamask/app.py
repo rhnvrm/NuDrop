@@ -76,7 +76,26 @@ def sign_transaction_cb(sid, message):
 
 def sign_message_cb(sid, message):
     print("YOLO MSG", message)
-    return None
+    ev = "sign_message"
+    socketio.emit(ev, message, room=sid)
+
+    p = rdb.pubsub(ignore_subscribe_messages=True)
+    p.subscribe("sign_msg:"+sid)
+
+    print("WAITING FOR MESSAGE")
+    message, data = None, None
+    timeout = 200
+    stop_time = time.time() + timeout
+
+    # https://stackoverflow.com/questions/7875008/how-to-implement-rediss-pubsub-timeout-feature
+    while time.time() < stop_time:
+        message = p.get_message(timeout=stop_time - time.time())
+        if message:
+            break
+
+    print("YOLO MESSAGE", message)
+    sig = message["data"]
+    return sig
 
 
 class MetaMask(Signer):
@@ -133,21 +152,8 @@ class MetaMask(Signer):
         print("formatted_tx", formatted_transaction)
         txData = self.sign_transaction_cb(self.sid, formatted_transaction)
         print("MYTXHASH", txData)
-        # _r = txData[1:33]
-        # _s = txData[33:]
-        # _v = txData[2 * transaction_dict["chainId"] + 8]
-        # # avoid unknown kwargs
-        # del transaction_dict["chainId"]
-        # del transaction_dict["from"]
-        # signed_transaction = Transaction(v=to_int(_v),  # type: int
-        #                                  r=to_int(_r),  # bytes -> int
-        #                                  s=to_int(_s),  # bytes -> int
-        #                                  **transaction_dict)
-        # print("signed_tx", signed_transaction)
-        # rlpstx = rlp.encode(signed_transaction, infer_serializer=False)
-        # print("rlp_encoded_hex_bytes",HexBytes(rlpstx))
-        # return HexBytes(rlpstx)
-        return HexBytes(txData)
+
+        return txData.decode()
 
     @validate_checksum_address
     def sign_message(self, account: str, message: bytes, content_type: str = None, validator_address: str = None, **kwargs) -> HexBytes:
@@ -170,22 +176,22 @@ class MetaMask(Signer):
             raise NotImplementedError
         signature = self.sign_message_cb(self.sid, data)
         print("MYSIGN", signature)
-        return HexBytes(signature)
+        return HexBytes(signature.decode())
 
 
 TESTNET = 'lynx'
 SEEDNODE_URI = "https://lynx.nucypher.network:9151"
-# PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
-PROVIDER_URI = "https://eth-goerli.alchemyapi.io/v2/N_84Pr8pjQPI7QK0zFxJFJQ6-Vlue6gQ"
+PROVIDER_URI = "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+# PROVIDER_URI = "https://eth-goerli.alchemyapi.io/v2/N_84Pr8pjQPI7QK0zFxJFJQ6-Vlue6gQ"
 
 BlockchainInterfaceFactory.initialize_interface(provider_uri=PROVIDER_URI)
 
 
-def newU():
-    return Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
+# def newU():
+#     return Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI)
 
 
-ursulas = [newU()]
+# ursulas = [newU()]
 
 
 @socketio.on('on_load')
@@ -199,6 +205,11 @@ def handle_message(data):
 def handle_message(data):
     print("RECV", data)
     p = rdb.publish("sign_tx:"+data["sid"], data["resp"])
+
+@socketio.on('signmsg_resp')
+def handle_message(data):
+    print("RECV", data)
+    p = rdb.publish("sign_msg:"+data["sid"], data["resp"])
 
 
 @app.route("/", methods=["GET"])
@@ -223,7 +234,7 @@ def prototype():
     rate = Web3.toWei(50, 'gwei')
     m, n = 1, 1
     policy = alice.grant(bob, label, m=m, n=n, rate=rate,
-                         expiration=expiration, handpicked_ursulas=ursulas)
+                         expiration=expiration)
     policy.treasure_map_publisher.block_until_complete()
     enrico = Enrico(policy_encrypting_key=policy.public_key)
     plaintext = b"Extremely sensitive information."
@@ -232,8 +243,10 @@ def prototype():
     delivered_cleartexts = bob.retrieve(ciphertext,
                                         policy_encrypting_key=policy.public_key,
                                         alice_verifying_key=alice_verifying_key,
-                                        label=label)
-    return {"status": "success", "data": delivered_cleartexts}
+                                        label=label,
+                                        treasure_map=policy.treasure_map)
+    print(delivered_cleartexts)
+    return {"status": "success", "data": delivered_cleartexts[0].decode()}
 
 
 if __name__ == '__main__':

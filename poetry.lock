@@ -898,7 +898,7 @@ python-versions = "*"
 
 [[package]]
 name = "nucypher"
-version = "4.7.1"
+version = "4.8.1"
 description = "A proxy re-encryption network to empower privacy in decentralized systems."
 category = "main"
 optional = false
@@ -2276,8 +2276,8 @@ netaddr = [
     {file = "netaddr-0.8.0.tar.gz", hash = "sha256:d6cc57c7a07b1d9d2e917aa8b36ae8ce61c35ba3fcd1b83ca31c5a0ee2b5a243"},
 ]
 nucypher = [
-    {file = "nucypher-4.7.1-py3-none-any.whl", hash = "sha256:cffc8525640216665c3b6ec6fe6181f9f2930e7b099f8c4550aeb04c130c22a3"},
-    {file = "nucypher-4.7.1.tar.gz", hash = "sha256:03dc046a62813fc41db18a976d6e1086d3fdf14017e1349a81e7079d4a5acdac"},
+    {file = "nucypher-4.8.1-py3-none-any.whl", hash = "sha256:24edee8e00baaa51a14bcf00cd4701ed5104f399ebd0989f6948fb3e0409b81c"},
+    {file = "nucypher-4.8.1.tar.gz", hash = "sha256:f5f78175388bc344466d20b8550bd26bfeecf7fbddf47067498f31d61fd26080"},
 ]
 parsimonious = [
     {file = "parsimonious-0.8.1.tar.gz", hash = "sha256:3add338892d580e0cb3b1a39e4a1b427ff9f687858fdd61097053742391a9f6b"},

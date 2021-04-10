@@ -17,16 +17,18 @@ import Web3 from "web3";
 // import {toBuffer} from "ethereumjs-util";
 import { io } from "socket.io-client";
 import axios from "axios";
-import PrivateKeyProvider from "truffle-privatekey-provider"
+import PrivateKeyProvider from "truffle-privatekey-provider";
 export default {
   async mounted() {
-
-    var privateKey = "0ce60fcab58b5ea3134dc0c1be9a3bdfab7d603cef0cee9053dd3291f59133c6";
-    var provider = new PrivateKeyProvider(privateKey, "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b");
+    var privateKey =
+      "0ce60fcab58b5ea3134dc0c1be9a3bdfab7d603cef0cee9053dd3291f59133c6";
+    var provider = new PrivateKeyProvider(
+      privateKey,
+      "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
+    );
 
     var web3 = new Web3(provider);
     console.log("here");
-
 
     // var txParams = {
     //   gasPrice: web3.utils.toHex(1353462421),
@@ -44,8 +46,9 @@ export default {
     socket.emit("on_load", {});
 
     socket.on("prompt_login", async (data) => {
-      console.log()
-      this.user_address = web3.eth.accounts.wallet._accounts.currentProvider.address;
+      console.log();
+      this.user_address =
+        web3.eth.accounts.wallet._accounts.currentProvider.address;
       this.socket_id = data.socket_id;
     });
 
@@ -59,41 +62,30 @@ export default {
         gas: web3.utils.toHex(data.gas),
         to: web3.utils.toHex(data.to),
         data: web3.utils.toHex(data.data),
-      }
-      // console.log("this.user", this.user_address)
-      // let nonce = await web3.eth.getTransactionCount(this.user_address);
+      };
 
-      // console.log("nonce", nonce);
+      var sig = await web3.eth.signTransaction(txParams);
+      console.log(sig);
 
-      // if (txParams.chainId && Number(txParams.chainId) > 1) nonce += 1048576;
-
-      // txParams.nonce = web3.utils.toHex(nonce);
-
-      // console.log(txParams);
-
-      // const common = new Common({ chain: "goerli" });
-      // const tx = Transaction.fromTxData(txParams, { common });
-
-      // var stx = web3.utils.toHex(tx.getMessageToSign());
-      // console.log("stx",stx)
-
-      // var sig = await web3.eth.personal.sign(stx, this.user_address, (err) => {
-      //   console.log("err signing", err)
-      // });
-      // console.log("sig", sig);
-
-      // const pkey = toBuffer("0x0ce60fcab58b5ea3134dc0c1be9a3bdfab7d603cef0cee9053dd3291f59133c6")
-      // console.log("pkey", pkey)
-      // var sig = tx.sign(pkey)
-      // console.log("sig", sig.serialize().toString('hex'))
-
-      var sig = await web3.eth.signTransaction(txParams)
-      console.log(sig)
-      // var signing_address = await web3.eth.personal.ecRecover(stx, sig)
-      // console.log("sa", signing_address)
       socket.emit("signtx_resp", {
         sid: this.socket_id,
-        resp: "0x" + sig.raw,
+        resp: sig.raw,
+      });
+    });
+
+    socket.on("sign_message", async (data) => {
+      console.log("INDATA", data);
+      var msg = {
+        address: web3.utils.toHex(data.address),
+        message: web3.utils.toHex(data.message),
+      };
+
+      var sig = await web3.eth.sign(msg.message, msg.address);
+      console.log(sig);
+
+      socket.emit("signmsg_resp", {
+        sid: this.socket_id,
+        resp: sig,
       });
     });
   },

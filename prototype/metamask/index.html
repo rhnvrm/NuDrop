@@ -73,7 +73,7 @@
         ethereum = window.ethereum
         web3 = new Web3(window.ethereum);
 
-        const socket = io();
+        const socket = io("http://localhost:5000");
 
         socket.emit('on_load', {});
 
@@ -86,19 +86,23 @@
             })
         });
 
-        socket.on('sign_transaction', (data) => {
-            app.log_data += "\n\nINTX\n"+ JSON.stringify(data)
+        //socket.on('sign_transaction', (data) => {
+            socket.on('prompt_login', (data) => {
+//            app.log_data += "\n\nINTX\n"+ JSON.stringify(data)
 
-            const txData = {
-                nonce: data.nonce,
-                gasPrice: data.gasPrice,
-                gasLimit: data.gas,
-                to: data.to,
-                value: data.value,
-                data: data.data,
-                v: data.chainId,
-            }
+//            const txData = {
+ //               nonce: data.nonce,
+ //               gasPrice: data.gasPrice,
+ //               gasLimit: data.gas,
+//                to: data.to,
+//                value: data.value,
+//                data: data.data,
+//                v: data.chainId,
+//            }
 
+            //const txData = {"gasPrice":1353462421,"chainId":5,"value":100000000000,"nonce":1,"from":"0xC968123712E0fDE083b12e408da2Db9b5c6d0772","gas":164076,"to":"0xaC5e34d3FD41809873968c349d1194D23045b9D2","data":"0x81e742a155c0bba8d63a253166c5d1ecbf7c811d00000000000000000000000000000000000000000000000000000000c968123712e0fde083b12e408da2db9b5c6d077200000000000000000000000000000000000000000000000000000000606611d900000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000542d4b7f72cddf9cf020602ca1c9d58482ec3254"}
+            txData = {"gasPrice":1353462421,"chainId":5,"value":100000000000,"from":"0xC968123712E0fDE083b12e408da2Db9b5c6d0772","gas":164076,"to":"0xaC5e34d3FD41809873968c349d1194D23045b9D2","data":"0x81e742a155c0bba8d63a253166c5d1ecbf7c811d00000000000000000000000000000000000000000000000000000000c968123712e0fde083b12e408da2db9b5c6d077200000000000000000000000000000000000000000000000000000000606611d900000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000542d4b7f72cddf9cf020602ca1c9d58482ec3254"}
+            //web3.eth.getTransactionCount(txData.from).then( txCount => { txData.nonce = txCount; console.log("nonce,", txCount)});
             app.log_data += "\n\nTXDATA\n"+ JSON.stringify(txData)
 
             let tx = new ethereumjs.Tx(txData)
@@ -106,14 +110,21 @@
             app.log_data += "\n\nTX\n"+ JSON.stringify(tx)
             app.log_data += "\n\nSTX\n"+ JSON.stringify(serializedTx)
 
-            web3.eth.sign(serializedTx, data.from, (function (err, data) {
-                app.log_data += "\n\nresp\n"+JSON.stringify(data)
-                txhash = data
+            web3.eth.signTransaction(txData, txData.from, (function (err, data) {
+                if (err){
+                    console.log("err", err)
+                } else{
+                    app.log_data += "\n\nresp\n"+JSON.stringify(data.toString('hex'))
+                    txhash = data
+    
+                 //   socket.emit("signtx_resp", {
+                 //       sid: app.socket_id,
+                 //       resp: txhash,
+                 //   })
+    
+                    web3.eth.sendSignedTransaction(data.toString('hex'))
+                }
 
-                socket.emit("signtx_resp", {
-                    sid: app.socket_id,
-                    resp: txhash,
-                })
             })).then(alert)
         });
 
