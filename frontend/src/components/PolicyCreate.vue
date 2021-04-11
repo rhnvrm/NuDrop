@@ -5,100 +5,101 @@
     <div>Socket address: {{ socket_id }}</div>
 
     <button v-on:click="createPolicy">Create policy</button>
+
+    <div>{{ prototype_data }}</div>
   </div>
 </template>
 
 <script>
-// import WalletConnectProvider from "@walletconnect/web3-provider";
-
 import Web3 from "web3";
-// import { Transaction } from "@ethereumjs/tx";
-// import Common from "@ethereumjs/common";
-// import {toBuffer} from "ethereumjs-util";
-import { io } from "socket.io-client";
+// import { Manager } from "socket.io-client";
 import axios from "axios";
 import PrivateKeyProvider from "truffle-privatekey-provider";
 export default {
   async mounted() {
-    var privateKey =
-      "0ce60fcab58b5ea3134dc0c1be9a3bdfab7d603cef0cee9053dd3291f59133c6";
+    if (this.$store.state.private_key == "not available") {        
+      this.$router.push('/me/wallet');
+    }
+
     var provider = new PrivateKeyProvider(
-      privateKey,
+      this.$store.state.private_key,
       "https://goerli.infura.io/v3/79153147849f40cf9bc97d4ec3c6416b"
     );
 
     var web3 = new Web3(provider);
-    console.log("here");
 
-    // var txParams = {
-    //   gasPrice: web3.utils.toHex(1353462421),
-    //   chainId: web3.utils.toHex(5),
-    //   value: web3.utils.toHex(100000000000),
-    //   from: this.user_address,
-    //   gas: web3.utils.toHex(164076),
-    //   to: "0xaC5e34d3FD41809873968c349d1194D23045b9D2",
-    //   data:
-    //     "0x81e742a155c0bba8d63a253166c5d1ecbf7c811d00000000000000000000000000000000000000000000000000000000c968123712e0fde083b12e408da2db9b5c6d077200000000000000000000000000000000000000000000000000000000606611d900000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000542d4b7f72cddf9cf020602ca1c9d58482ec3254",
-    // };
+    var client_id = Date.now();
+    var ws = new WebSocket(`ws://localhost/api/ws/${client_id}`);
+    ws.onmessage = (event) => {
+      const ev = JSON.parse(event.data);
+      var data = ev.data;
+      switch (ev.kind) {
+        case "prompt_login":
+          this.user_address =
+            web3.eth.accounts.wallet._accounts.currentProvider.address;
+          this.socket_id = client_id;
+          break;
+        case "sign_transaction":
+          var txParams = {
+            gasPrice: web3.utils.toHex(data.gasPrice),
+            chainId: web3.utils.toHex(data.chainId),
+            value: web3.utils.toHex(data.value),
+            from: web3.utils.toHex(data.from),
+            gas: web3.utils.toHex(data.gas),
+            to: web3.utils.toHex(data.to),
+            data: web3.utils.toHex(data.data),
+          };
 
-    const socket = io("ws://localhost:5000");
+          web3.eth.signTransaction(txParams).then((sig) => {
+            ws.send(
+              JSON.stringify({
+                kind: "signtx_resp",
+                sid: this.socket_id,
+                resp: sig.raw,
+              })
+            );
+          });
 
-    socket.emit("on_load", {});
+          break;
 
-    socket.on("prompt_login", async (data) => {
-      console.log();
-      this.user_address =
-        web3.eth.accounts.wallet._accounts.currentProvider.address;
-      this.socket_id = data.socket_id;
-    });
+        case "sign_message":
+          var msg = {
+            address: web3.utils.toHex(data.address),
+            message: web3.utils.toHex(data.message),
+          };
 
-    socket.on("sign_transaction", async (data) => {
-      console.log("INDATA", data);
-      var txParams = {
-        gasPrice: web3.utils.toHex(data.gasPrice),
-        chainId: web3.utils.toHex(data.chainId),
-        value: web3.utils.toHex(data.value),
-        from: web3.utils.toHex(data.from),
-        gas: web3.utils.toHex(data.gas),
-        to: web3.utils.toHex(data.to),
-        data: web3.utils.toHex(data.data),
-      };
+          web3.eth.sign(msg.message, msg.address).then((sig) => {
+            ws.send(
+              JSON.stringify({
+                kind: "signmsg_resp",
+                sid: this.socket_id,
+                resp: sig,
+              })
+            );
+          });
 
-      var sig = await web3.eth.signTransaction(txParams);
-      console.log(sig);
+          break;
+      }
+    };
 
-      socket.emit("signtx_resp", {
-        sid: this.socket_id,
-        resp: sig.raw,
-      });
-    });
-
-    socket.on("sign_message", async (data) => {
-      console.log("INDATA", data);
-      var msg = {
-        address: web3.utils.toHex(data.address),
-        message: web3.utils.toHex(data.message),
-      };
-
-      var sig = await web3.eth.sign(msg.message, msg.address);
-      console.log(sig);
-
-      socket.emit("signmsg_resp", {
-        sid: this.socket_id,
-        resp: sig,
-      });
-    });
+    ws.onopen = () =>
+      ws.send(
+        JSON.stringify({
+          kind: "on_load",
+        })
+      );
   },
   data: function () {
     return {
       user_address: "not available",
       socket_id: "not available",
+      prototype_data: "pending",
     };
   },
   methods: {
     createPolicy: function () {
       axios
-        .post("http://localhost:5000/api/prototype", {
+        .post("http://localhost/api/v1/policy/create", {
           alice_address: this.user_address,
           socket_id: this.socket_id,
         })

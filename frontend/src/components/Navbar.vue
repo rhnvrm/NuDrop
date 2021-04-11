@@ -35,12 +35,11 @@
         <template #end>
             <b-navbar-item tag="div">
                 <div class="buttons">
-                    <a class="button is-primary">
+                    <!-- <a class="button is-primary">
                         <strong>Sign up</strong>
-                    </a>
-                    <a class="button is-light">
-                        Log in
-                    </a>
+                    </a> -->
+
+                    <router-link class="button is-primary" to="/me/wallet">Wallet</router-link>
                 </div>
             </b-navbar-item>
         </template>
