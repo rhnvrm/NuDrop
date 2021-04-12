@@ -18,6 +18,7 @@
     "ethereumjs-utils": "^5.2.5",
     "fortmatic": "^2.2.1",
     "inter-ui": "^3.15.1",
+    "querystring": "^0.2.1",
     "sass": "^1.32.8",
     "sass-loader": "^10.1.1",
     "socket.io-client": "^4.0.1",

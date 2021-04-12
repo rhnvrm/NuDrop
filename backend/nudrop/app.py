@@ -1,3 +1,5 @@
+from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
+from nucypher.utilities.logging import GlobalLoggerSettings
 from .sockets import ConnectionManager
 import datetime
 import time
@@ -8,31 +10,35 @@ import redis
 from umbral.keys import UmbralPrivateKey
 import uvicorn
 from eth_typing.evm import ChecksumAddress
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form
 from fastapi_socketio import SocketManager
 from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
 from web3.main import Web3
-
+import asyncio
 from .config import settings
 from .signer import PrivateSocketIOSigner
+from asgiref.sync import async_to_sync
+
+# Twisted Logger
+GlobalLoggerSettings.set_log_level(log_level_name="debug")
+GlobalLoggerSettings.start_console_logging()
+
+BlockchainInterfaceFactory.initialize_interface(provider_uri=settings.provider_uri)
 
 app = FastAPI(
     docs_url="/api/docs", redoc_url="/api/redocs", openapi_url="/api/openapi.json"
 )
 
-# SocketManager(app=app, mount_location="/api/ws/")
-
-# import ipdb; ipdb.set_trace()
-
+# print("starting redis conn")
 rdb = redis.Redis()
+
+# print("starting ws conn manager")
 manager = ConnectionManager()
+
 
 
 @app.get("/api")
 async def read_root():
-    # import ipdb
-
-    # ipdb.set_trace()
     return {settings.app_name: "Hello World"}
 
 
@@ -80,13 +86,13 @@ async def register_bob(
 
 
 @app.post("/api/v1/policy/create")
-async def create_policy(
-    alice_address: str,
-    socket_id: str,
-    bob_enc_key: str,
-    bob_sig_key: str,
-    expiry_days: int,
-    code_name: str,
+def create_policy(
+    alice_address: str = Form(...),
+    socket_id: str = Form(...),
+    bob_enc_key: str = Form(...),
+    bob_sig_key: str = Form(...),
+    expiry_days: int = Form(...),
+    code_name: str = Form(...),
 ):
     address = Web3.toChecksumAddress(alice_address)
     signer = PrivateSocketIOSigner(
@@ -103,8 +109,8 @@ async def create_policy(
     )
 
     remote_bob = Bob.from_public_keys(
-        encrypting_key=bytes.fromhex(bob_enc_key),
-        verifying_key=bytes.fromhex(bob_sig_key),
+        encrypting_key=bytes.fromhex(bob_enc_key[2:]),
+        verifying_key=bytes.fromhex(bob_sig_key[2:]),
     )
 
     label = bytes("nudrop/" + code_name, "utf-8")
@@ -113,8 +119,11 @@ async def create_policy(
 
     policy_end_datetime = maya.now() + datetime.timedelta(days=expiry_days)
     m, n = 2, 3
+    rate = Web3.toWei(50, "gwei")
 
-    policy = alice.grant(remote_bob, label, m=m, n=n, expiration=policy_end_datetime)
+    policy = alice.grant(
+        remote_bob, label, rate=rate, m=m, n=n, expiration=policy_end_datetime
+    )
 
     policy.treasure_map_publisher.block_until_complete()
 
@@ -132,7 +141,18 @@ async def create_policy(
 
 def sign_transaction_cb(sid, message):
     ev = "sign_transaction"
-    app.sio.emit(ev, message, room=sid)
+    ws = manager.active_connections[sid]
+    manager.add_task({"task": {"kind": ev, "data": message}, "ws": ws})
+    #async_to_sync(manager.send_personal_data)({"kind": ev, "data": message}, ws)
+
+    # import nest_asyncio
+    # nest_asyncio.apply()
+
+    # asyncio.run(manager.send_personal_data({"kind": ev, "data": message}, ws))
+
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # loop.run_until_complete(manager.send_personal_data({"kind": ev, "data": message}, ws))
 
     p = rdb.pubsub(ignore_subscribe_messages=True)
     p.subscribe("sign_tx:" + sid)
@@ -152,7 +172,10 @@ def sign_transaction_cb(sid, message):
 
 def sign_message_cb(sid, message):
     ev = "sign_message"
-    app.sio.emit(ev, message, room=sid)
+    ws = manager.active_connections[sid]
+    manager.add_task({"task": {"kind": ev, "data": message}, "ws": ws})
+    # async_to_sync(manager.send_personal_data)({"kind": ev, "data": message}, ws)
+    # asyncio.run(manager.send_personal_data({"kind": ev, "data": message}, ws))
 
     p = rdb.pubsub(ignore_subscribe_messages=True)
     p.subscribe("sign_msg:" + sid)
@@ -177,69 +200,22 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
         while True:
             data = await websocket.receive_json()
             if data["kind"] == "on_load":
-                await manager.send_personal_data({
-                    "kind":"prompt_login"
-                }, websocket)
+                manager.register(data["sid"], websocket)
+                await manager.send_personal_data({"kind": "prompt_login"}, websocket)
             elif data["kind"] == "signtx_resp":
-                p = rdb.publish("sign_tx:" + data["sid"], data["resp"])
+                p = rdb.publish("sign_tx:" + str(data["sid"]), data["resp"])
             elif data["kind"] == "signmsg_resp":
-                pass
-            # await manager.send_personal_message(f"You wrote: {data}", websocket)
-            # await manager.broadcast(f"Client #{client_id} says: {data}")
+                p = rdb.publish("sign_msg:" + str(data["sid"]), data["resp"])
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         await manager.broadcast(f"Client #{client_id} left the chat")
 
 
-# @app.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     print('Accepting client connection...')
-#     await websocket.accept()
-#     while True:
-#         try:
-#             # Wait for any message from the client
-#             data = await websocket.receive_json()
-#             # Send message to the client
-#             if data == "on_load":
-#                 await websocket.send_json({
-#                     "kind": "message",
-#                     "message": "prompt_login"
-#                 })
-#             elif data == "signtx_resp":
-#                 await websocket.send_json({
-#                     "kind": "message",
-#                     "message": ""
-#                 })
-#             elif data == "signmsg_resp":
-#                 pass
-
-# # @app.sio.on("on_load")
-# # async def handle_message(sid, *args, **kwargs):
-# #     print("here!!")
-# #     await app.sio.emit("prompt_login", {"socket_id": sid})
-
-
-# # @app.sio.on("signtx_resp")
-# # def handle_message(sid, *args, **kwargs):
-# #     print("RECV", kwargs)
-# #     p = rdb.publish("sign_tx:" + kwargs["sid"], kwargs["resp"])
-
-
-# @app.sio.on("signmsg_resp")
-# def handle_message(sid, *args, **kwargs):
-#     print("RECV", kwargs)
-#     p = rdb.publish("sign_msg:" + kwargs["sid"], kwargs["resp"])
-
-
-# resp = {'value': random.uniform(0, 1)}
-# await websocket.send_json(resp)
-#     except Exception as e:
-#         print('error:', e)
-#         break
-# print('Bye..')
-
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(manager.clear_tasks())
 
 async def main():
     uvicorn.run(
-        "nudrop.app:app", host="0.0.0.0", port=8000, reload=True, debug=True, workers=3
+        "nudrop.app:app", host="0.0.0.0", port=8000, reload=True, debug=True, workers=30
     )
