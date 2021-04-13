@@ -5,7 +5,7 @@
     <div>Socket address: {{ socket_id }}</div>
 
 
-    <div>{{ prototype_data }}</div>
+    <div>{{ api_response_data }}</div>
 
     <h1 class="title">Create Policy</h1>
     <b-field label="Code Name">
@@ -110,7 +110,7 @@ export default {
     return {
       user_address: "not available",
       socket_id: "not available",
-      prototype_data: "pending",
+      api_response_data: "pending",
       expiry_days: 1,
       codename: "",
       rec_enc_key: "0x03e75cfdf6702c76133d05818cfd031c9cefefa0a23f8dd864f6fa8aaf7a525d71",
@@ -120,7 +120,7 @@ export default {
   methods: {
     createPolicy: function () {
       axios
-        .post("http://localhost/api/v1/policy/create", querystring.stringify({
+        .post("/api/v1/policy/create", querystring.stringify({
           alice_address: this.user_address,
           socket_id: this.socket_id,
           code_name: this.codename,
@@ -128,7 +128,7 @@ export default {
           bob_enc_key: this.rec_enc_key,
           bob_sig_key: this.rec_sig_key,
         }))
-        .then((response) => (this.prototype_data = response.data));
+        .then((response) => (this.api_response_data = response.data));
     },
   },
 };

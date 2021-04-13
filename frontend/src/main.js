@@ -5,6 +5,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import App from './App.vue'
 import Encrypt from './components/Encrypt.vue'
+import Decrypt from './components/Decrypt.vue'
 import PolicyCreate from './components/PolicyCreate.vue'
 import FileViewer from './components/FileViewer.vue'
 import Wallet from './components/Wallet.vue'
@@ -19,6 +20,7 @@ Vue.use(VueRouter)
 const routes = [
   { path: '/', component: Home },
   { path: '/encrypt', component: Encrypt },
+  { path: '/decrypt', component: Decrypt },
   { path: '/policy/create', component: PolicyCreate },
   { path: '/me/files', component: FileViewer },
   { path: '/me/wallet', component: Wallet },

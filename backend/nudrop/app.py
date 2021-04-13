@@ -1,4 +1,5 @@
 from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
+from nucypher.config.constants import TEMPORARY_DOMAIN
 from nucypher.utilities.logging import GlobalLoggerSettings
 from .sockets import ConnectionManager
 import datetime
@@ -7,7 +8,7 @@ import maya
 from nucypher.crypto.powers import DecryptingPower, SigningPower
 
 import redis
-from umbral.keys import UmbralPrivateKey
+from umbral.keys import UmbralPrivateKey, UmbralPublicKey
 import uvicorn
 from eth_typing.evm import ChecksumAddress
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form
@@ -16,7 +17,7 @@ from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
 from web3.main import Web3
 import asyncio
 from .config import settings
-from .signer import PrivateSocketIOSigner
+from .signer import WebsocketSigner
 from asgiref.sync import async_to_sync
 
 # Twisted Logger
@@ -55,6 +56,24 @@ async def get_bob_list(name: str):
     bob = rdb.hgetall("db:bobs:" + name)
     return bob
 
+@app.post("/api/v1/enrico/encrypt")
+def encrypt_file(
+    policy_pub_key: str = Form(...),
+    plaintext: str = Form(...),
+):
+    key = UmbralPublicKey.from_hex(
+        policy_pub_key
+    )
+    enrico = Enrico(
+        policy_encrypting_key=key
+    )
+    plaintext = plaintext.encode('utf-8') 
+    ciphertext, _signature = enrico.encrypt_message(plaintext)
+
+    return {
+        "ciphertext": ciphertext.to_bytes().hex(),
+    }
+
 
 @app.post("/api/v1/bob")
 async def register_bob(
@@ -84,6 +103,44 @@ async def register_bob(
 
     return data
 
+@app.post("/api/v1/bob/decrypt")
+def decrypt_data(
+    enc_key: str = Form(...),
+    sig_key: str = Form(...),
+    policy_pub_key: str = Form(...),
+    alice_verifying_key: str = Form(...),
+    label: str = Form(...),
+    ciphertext = Form(...)
+):
+
+    enc_power = DecryptingPower(keypair=enc_key)
+    sig_power = SigningPower(keypair=sig_key)
+    power_ups = [enc_power, sig_power]
+    
+    bob = Bob(
+        domain=TEMPORARY_DOMAIN,
+        federated_only=True,
+        crypto_power_ups=power_ups,
+        start_learning_now=True,
+        abort_on_learning_error=True,
+        save_metadata=False,
+    )
+
+    bob.join_policy(
+        bytes(label, "utf-8"),
+        policy_pub_key
+    )
+
+    delivered_cleartexts = bob.retrieve(
+        ciphertext,
+        policy_encrypting_key=policy_pub_key,
+        alice_verifying_key=alice_verifying_key,
+        label=label,
+    )
+
+    return {
+        "cleartext": delivered_cleartexts
+    }
 
 @app.post("/api/v1/policy/create")
 def create_policy(
@@ -95,7 +152,7 @@ def create_policy(
     code_name: str = Form(...),
 ):
     address = Web3.toChecksumAddress(alice_address)
-    signer = PrivateSocketIOSigner(
+    signer = WebsocketSigner(
         sid=socket_id,
         sign_message_cb=sign_message_cb,
         sign_transaction_cb=sign_transaction_cb,

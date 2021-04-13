@@ -11,7 +11,7 @@ from nucypher.blockchain.eth.decorators import validate_checksum_address
 from nucypher.blockchain.eth.signers import Signer
 from web3.main import Web3
 
-class PrivateSocketIOSigner(Signer):
+class WebsocketSigner(Signer):
     SIGN_DATA_FOR_VALIDATOR = 'data/validator'
     SIGN_DATA_FOR_CLIQUE = 'application/clique'
     SIGN_DATA_FOR_ECRECOVER = 'text/plain'
