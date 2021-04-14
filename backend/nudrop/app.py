@@ -273,6 +273,19 @@ async def startup_event():
     asyncio.create_task(manager.clear_tasks())
 
 async def main():
+    import os
+    reload = True
+    debug = True
+    workers = 3
+
+    if os.getenv("PRODUCTION"):
+        reload = False
+        debug = False
+        workers = 30
+
     uvicorn.run(
-        "nudrop.app:app", host="0.0.0.0", port=8000, reload=True, debug=True, workers=30
+        "nudrop.app:app", 
+        host="0.0.0.0", port=8000, 
+        reload=reload, debug=reload, 
+        workers=workers
     )

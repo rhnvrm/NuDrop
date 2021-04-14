@@ -4,7 +4,6 @@
     <div>User address: {{ user_address }}</div>
     <div>Socket address: {{ socket_id }}</div>
 
-
     <div>{{ api_response_data }}</div>
 
     <h1 class="title">Create Policy</h1>
@@ -21,19 +20,21 @@
       <b-input v-model="rec_sig_key" placeholder="0x"></b-input>
     </b-field>
 
-    <b-button v-on:click="createPolicy" type="is-primary" expanded>Create policy</b-button>
+    <b-button v-on:click="createPolicy" type="is-primary" expanded
+      >Create policy</b-button
+    >
   </div>
 </template>
 
 <script>
 import Web3 from "web3";
 import axios from "axios";
-import querystring from "querystring"
+import querystring from "querystring";
 import PrivateKeyProvider from "truffle-privatekey-provider";
 export default {
   async mounted() {
-    if (this.$store.state.private_key == "not available") {        
-      this.$router.push('/me/wallet');
+    if (this.$store.state.private_key == "not available") {
+      this.$router.push("/me/wallet");
     }
 
     var provider = new PrivateKeyProvider(
@@ -42,13 +43,20 @@ export default {
     );
 
     var web3 = new Web3(provider);
+    this.web3 = web3;
 
     var client_id = Date.now();
-    var ws = new WebSocket(`ws://localhost/api/ws/${client_id}`);
+    // TODO: make this uri configurable
+    var wsprotocol = "" 
+    if (window.location.hostname === 'localhost') {
+      wsprotocol = "ws"
+    } else {
+      wsprotocol = "wss"
+    }
+    var ws = new WebSocket(wsprotocol+`://`+window.location.hostname+`/api/ws/${client_id}`);
     ws.onmessage = (event) => {
       const ev = JSON.parse(event.data);
       var data = ev.data;
-      console.log(ev)
       switch (ev.kind) {
         case "prompt_login":
           this.user_address =
@@ -56,44 +64,11 @@ export default {
           this.socket_id = client_id;
           break;
         case "sign_transaction":
-          var txParams = {
-            gasPrice: web3.utils.toHex(data.gasPrice),
-            chainId: web3.utils.toHex(data.chainId),
-            value: web3.utils.toHex(data.value),
-            from: web3.utils.toHex(data.from),
-            gas: web3.utils.toHex(data.gas),
-            to: web3.utils.toHex(data.to),
-            data: web3.utils.toHex(data.data),
-          };
-
-          web3.eth.signTransaction(txParams).then((sig) => {
-            ws.send(
-              JSON.stringify({
-                kind: "signtx_resp",
-                sid: this.socket_id,
-                resp: sig.raw,
-              })
-            );
-          });
-
+          this.signTx(ws, data);
           break;
 
         case "sign_message":
-          var msg = {
-            address: web3.utils.toHex(data.address),
-            message: web3.utils.toHex(data.message),
-          };
-
-          web3.eth.sign(msg.message, msg.address).then((sig) => {
-            ws.send(
-              JSON.stringify({
-                kind: "signmsg_resp",
-                sid: this.socket_id,
-                resp: sig,
-              })
-            );
-          });
-
+          this.signMsg(ws, data);
           break;
       }
     };
@@ -113,22 +88,89 @@ export default {
       api_response_data: "pending",
       expiry_days: 1,
       codename: "",
-      rec_enc_key: "0x03e75cfdf6702c76133d05818cfd031c9cefefa0a23f8dd864f6fa8aaf7a525d71",
-      rec_sig_key: "0x02d0314bfed2112022122fd9d6aaddd643b1fed544f47bf940eee1f575379ac76f",
+      web3: null,
+      rec_enc_key:
+        "0x03e75cfdf6702c76133d05818cfd031c9cefefa0a23f8dd864f6fa8aaf7a525d71",
+      rec_sig_key:
+        "0x02d0314bfed2112022122fd9d6aaddd643b1fed544f47bf940eee1f575379ac76f",
     };
   },
   methods: {
     createPolicy: function () {
       axios
-        .post("/api/v1/policy/create", querystring.stringify({
-          alice_address: this.user_address,
-          socket_id: this.socket_id,
-          code_name: this.codename,
-          expiry_days: this.expiry_days,
-          bob_enc_key: this.rec_enc_key,
-          bob_sig_key: this.rec_sig_key,
-        }))
+        .post(
+          "/api/v1/policy/create",
+          querystring.stringify({
+            alice_address: this.user_address,
+            socket_id: this.socket_id,
+            code_name: this.codename,
+            expiry_days: this.expiry_days,
+            bob_enc_key: this.rec_enc_key,
+            bob_sig_key: this.rec_sig_key,
+          })
+        )
         .then((response) => (this.api_response_data = response.data));
+    },
+    signMsg: async function (ws, data) {
+      var msg = {
+        address: this.web3.utils.toHex(data.address),
+        message: this.web3.utils.toHex(data.message),
+      };
+
+      /* eslint-disable no-unused-vars */
+      const { result, _ } = await this.$buefy.dialog.confirm({
+        message: JSON.stringify(data, null, 2),
+        closeOnConfirm: true,
+        cancelText: "Disagree",
+        confirmText: "Sign",
+        onConfirm: () => this.$buefy.toast.open("Signing..."),
+      });
+      /* eslint-enable no-unused-vars */
+
+      if (result) {
+        this.web3.eth.sign(msg.message, msg.address).then((sig) => {
+          ws.send(
+            JSON.stringify({
+              kind: "signmsg_resp",
+              sid: this.socket_id,
+              resp: sig,
+            })
+          );
+        });
+      }
+    },
+    signTx: async function (ws, data) {
+      var txParams = {
+        gasPrice: this.web3.utils.toHex(data.gasPrice),
+        chainId: this.web3.utils.toHex(data.chainId),
+        value: this.web3.utils.toHex(data.value),
+        from: this.web3.utils.toHex(data.from),
+        gas: this.web3.utils.toHex(data.gas),
+        to: this.web3.utils.toHex(data.to),
+        data: this.web3.utils.toHex(data.data),
+      };
+
+      /* eslint-disable no-unused-vars */
+      const { result, _ } = await this.$buefy.dialog.confirm({
+        message: JSON.stringify(data, null, 2),
+        closeOnConfirm: true,
+        cancelText: "Disagree",
+        confirmText: "Sign",
+        onConfirm: () => this.$buefy.toast.open("Signing..."),
+      });
+      /* eslint-enable no-unused-vars */
+
+      if (result) {
+        this.web3.eth.signTransaction(txParams).then((sig) => {
+          ws.send(
+            JSON.stringify({
+              kind: "signtx_resp",
+              sid: this.socket_id,
+              resp: sig.raw,
+            })
+          );
+        });
+      }
     },
   },
 };

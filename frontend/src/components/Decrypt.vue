@@ -56,7 +56,7 @@
     </b-field>
     <div class="buttons">
       <b-button @click="decryptData" type="is-primary" expanded
-        >Encrypt</b-button
+        >Decrypt</b-button
       >
     </div>
   </div>
@@ -94,7 +94,7 @@ export default {
       },
       label: {
           get() {
-              return "nudrop/"+this.label
+              return "nudrop/"+this.codename
           }
       }
   },

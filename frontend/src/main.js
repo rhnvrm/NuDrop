@@ -14,7 +14,9 @@ import Vuex from 'vuex'
 import VuexPersist from 'vuex-persist'
 
 Vue.config.productionTip = false
-Vue.use(Buefy)
+Vue.use(Buefy, {
+  defaultProgrammaticPromise: true
+})
 Vue.use(VueRouter)
 
 const routes = [
