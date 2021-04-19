@@ -19,7 +19,11 @@
     <b-field label="Receiver Signing Public Key">
       <b-input v-model="rec_sig_key" placeholder="0x"></b-input>
     </b-field>
-
+    <b-field label="Nucypher Passphrase">
+      <b-input 
+        v-model="nuPassphrase" 
+        placeholder="passphrase"></b-input>
+    </b-field>
     <b-button v-on:click="createPolicy" type="is-primary" expanded
       >Create policy</b-button
     >
@@ -28,9 +32,9 @@
 
 <script>
 import Web3 from "web3";
+import PrivateKeyProvider from "truffle-privatekey-provider";
 import axios from "axios";
 import querystring from "querystring";
-import PrivateKeyProvider from "truffle-privatekey-provider";
 export default {
   async mounted() {
     if (this.$store.state.private_key == "not available") {
@@ -89,10 +93,9 @@ export default {
       expiry_days: 1,
       codename: "",
       web3: null,
-      rec_enc_key:
-        "0x03e75cfdf6702c76133d05818cfd031c9cefefa0a23f8dd864f6fa8aaf7a525d71",
-      rec_sig_key:
-        "0x02d0314bfed2112022122fd9d6aaddd643b1fed544f47bf940eee1f575379ac76f",
+      rec_enc_key:"",
+      rec_sig_key:"",
+      nuPassphrase: "",
     };
   },
   methods: {
@@ -102,6 +105,7 @@ export default {
           "/api/v1/policy/create",
           querystring.stringify({
             alice_address: this.user_address,
+            alice_password: this.nuPassphrase,
             socket_id: this.socket_id,
             code_name: this.codename,
             expiry_days: this.expiry_days,

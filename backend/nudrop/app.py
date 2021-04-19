@@ -1,24 +1,26 @@
-from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
-from nucypher.config.constants import TEMPORARY_DOMAIN
-from nucypher.utilities.logging import GlobalLoggerSettings
-from .sockets import ConnectionManager
+import asyncio
 import datetime
 import time
-import maya
-from nucypher.crypto.powers import DecryptingPower, SigningPower
 
+import maya
 import redis
-from umbral.keys import UmbralPrivateKey, UmbralPublicKey
 import uvicorn
+from asgiref.sync import async_to_sync
 from eth_typing.evm import ChecksumAddress
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form
+from fastapi import FastAPI, Form, WebSocket, WebSocketDisconnect
 from fastapi_socketio import SocketManager
+from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
+from nucypher.config.constants import TEMPORARY_DOMAIN
+from nucypher.config.keyring import ExistingKeyringError, NucypherKeyring
+from nucypher.crypto.powers import DecryptingPower, SigningPower
+from nucypher.utilities.logging import GlobalLoggerSettings
+from umbral.keys import UmbralPrivateKey, UmbralPublicKey
 from web3.main import Web3
-import asyncio
+
 from .config import settings
 from .signer import WebsocketSigner
-from asgiref.sync import async_to_sync
+from .sockets import ConnectionManager
 
 # Twisted Logger
 GlobalLoggerSettings.set_log_level(log_level_name="debug")
@@ -30,18 +32,46 @@ app = FastAPI(
     docs_url="/api/docs", redoc_url="/api/redocs", openapi_url="/api/openapi.json"
 )
 
-# print("starting redis conn")
 rdb = redis.Redis()
 
-# print("starting ws conn manager")
 manager = ConnectionManager()
-
 
 
 @app.get("/api")
 async def read_root():
     return {settings.app_name: "Hello World"}
 
+
+def get_keyring(checksum_address, password):
+    try:
+        keyring = NucypherKeyring.generate(
+            checksum_address=checksum_address, password=password
+        )
+        keyring.unlock(password)
+        return keyring
+    except ExistingKeyringError:
+        keyring = NucypherKeyring(account=checksum_address)
+        keyring.unlock(password)
+
+        return keyring
+
+@app.post("/api/v1/me")
+def about_me(
+    checksum_address: str = Form(...),
+    password: str = Form(...),
+):
+    keyring = get_keyring(
+        Web3.toChecksumAddress(checksum_address),
+        password)
+
+    data = {
+        "pub_enc_key": keyring.encrypting_public_key.hex(),
+        "pub_sig_key": keyring.signing_public_key.hex(),
+    }
+
+    keyring.lock()
+
+    return data
 
 @app.get("/api/v1/bob")
 async def get_bob_list():
@@ -56,18 +86,15 @@ async def get_bob_list(name: str):
     bob = rdb.hgetall("db:bobs:" + name)
     return bob
 
+
 @app.post("/api/v1/enrico/encrypt")
 def encrypt_file(
     policy_pub_key: str = Form(...),
     plaintext: str = Form(...),
 ):
-    key = UmbralPublicKey.from_hex(
-        policy_pub_key
-    )
-    enrico = Enrico(
-        policy_encrypting_key=key
-    )
-    plaintext = plaintext.encode('utf-8') 
+    key = UmbralPublicKey.from_hex(policy_pub_key)
+    enrico = Enrico(policy_encrypting_key=key)
+    plaintext = plaintext.encode("utf-8")
     ciphertext, _signature = enrico.encrypt_message(plaintext)
 
     return {
@@ -105,31 +132,32 @@ async def register_bob(
 
 @app.post("/api/v1/bob/decrypt")
 def decrypt_data(
-    enc_key: str = Form(...),
-    sig_key: str = Form(...),
+    bob_address: str = Form(...),
+    bob_password: str = Form(...),
+    socket_id: str = Form(...),
     policy_pub_key: str = Form(...),
     alice_verifying_key: str = Form(...),
     label: str = Form(...),
-    ciphertext = Form(...)
+    ciphertext=Form(...),
 ):
-
-    enc_power = DecryptingPower(keypair=enc_key)
-    sig_power = SigningPower(keypair=sig_key)
-    power_ups = [enc_power, sig_power]
+    signer = WebsocketSigner(
+        sid=socket_id,
+        sign_message_cb=sign_message_cb,
+        sign_transaction_cb=sign_transaction_cb,
+    )
     
+    keyring = get_keyring(
+        Web3.toChecksumAddress(bob_address),
+        bob_password)
+
     bob = Bob(
-        domain=TEMPORARY_DOMAIN,
-        federated_only=True,
-        crypto_power_ups=power_ups,
-        start_learning_now=True,
-        abort_on_learning_error=True,
-        save_metadata=False,
+        keyring=keyring,
+        signer=signer,
+        domain=settings.nucypher_network,
+        provider_uri=settings.provider_uri,
     )
 
-    bob.join_policy(
-        bytes(label, "utf-8"),
-        policy_pub_key
-    )
+    bob.join_policy(bytes(label, "utf-8"), bytes.fromhex(policy_pub_key))
 
     delivered_cleartexts = bob.retrieve(
         ciphertext,
@@ -138,13 +166,13 @@ def decrypt_data(
         label=label,
     )
 
-    return {
-        "cleartext": delivered_cleartexts
-    }
+    return {"cleartext": delivered_cleartexts}
+
 
 @app.post("/api/v1/policy/create")
 def create_policy(
     alice_address: str = Form(...),
+    alice_password: str = Form(...),
     socket_id: str = Form(...),
     bob_enc_key: str = Form(...),
     bob_sig_key: str = Form(...),
@@ -158,16 +186,20 @@ def create_policy(
         sign_transaction_cb=sign_transaction_cb,
     )
 
+    keyring = get_keyring(address, alice_password)
+
     alice = Alice(
-        checksum_address=address,
+        keyring=keyring,
         signer=signer,
         domain=settings.nucypher_network,
         provider_uri=settings.provider_uri,
     )
 
+    alice.start_learning_loop(now=True)
+
     remote_bob = Bob.from_public_keys(
-        encrypting_key=bytes.fromhex(bob_enc_key[2:]),
-        verifying_key=bytes.fromhex(bob_sig_key[2:]),
+        encrypting_key=UmbralPublicKey.from_hex(bob_enc_key),
+        verifying_key=UmbralPublicKey.from_hex(bob_sig_key),
     )
 
     label = bytes("nudrop/" + code_name, "utf-8")
@@ -200,16 +232,6 @@ def sign_transaction_cb(sid, message):
     ev = "sign_transaction"
     ws = manager.active_connections[sid]
     manager.add_task({"task": {"kind": ev, "data": message}, "ws": ws})
-    #async_to_sync(manager.send_personal_data)({"kind": ev, "data": message}, ws)
-
-    # import nest_asyncio
-    # nest_asyncio.apply()
-
-    # asyncio.run(manager.send_personal_data({"kind": ev, "data": message}, ws))
-
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop)
-    # loop.run_until_complete(manager.send_personal_data({"kind": ev, "data": message}, ws))
 
     p = rdb.pubsub(ignore_subscribe_messages=True)
     p.subscribe("sign_tx:" + sid)
@@ -231,8 +253,6 @@ def sign_message_cb(sid, message):
     ev = "sign_message"
     ws = manager.active_connections[sid]
     manager.add_task({"task": {"kind": ev, "data": message}, "ws": ws})
-    # async_to_sync(manager.send_personal_data)({"kind": ev, "data": message}, ws)
-    # asyncio.run(manager.send_personal_data({"kind": ev, "data": message}, ws))
 
     p = rdb.pubsub(ignore_subscribe_messages=True)
     p.subscribe("sign_msg:" + sid)
@@ -272,8 +292,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
 async def startup_event():
     asyncio.create_task(manager.clear_tasks())
 
+
 async def main():
     import os
+
     reload = True
     debug = True
     workers = 3
@@ -284,8 +306,10 @@ async def main():
         workers = 30
 
     uvicorn.run(
-        "nudrop.app:app", 
-        host="0.0.0.0", port=8000, 
-        reload=reload, debug=reload, 
-        workers=workers
+        "nudrop.app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=reload,
+        debug=debug,
+        workers=workers,
     )
