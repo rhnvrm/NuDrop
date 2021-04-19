@@ -73,20 +73,6 @@ def about_me(
 
     return data
 
-@app.get("/api/v1/bob")
-async def get_bob_list():
-    list_of_bobs = [x.decode("utf-8") for x in rdb.smembers("db:bobs")]
-    return {
-        "bobs": list_of_bobs,
-    }
-
-
-@app.get("/api/v1/bob/{name}")
-async def get_bob_list(name: str):
-    bob = rdb.hgetall("db:bobs:" + name)
-    return bob
-
-
 @app.post("/api/v1/enrico/encrypt")
 def encrypt_file(
     policy_pub_key: str = Form(...),
@@ -100,35 +86,6 @@ def encrypt_file(
     return {
         "ciphertext": ciphertext.to_bytes().hex(),
     }
-
-
-@app.post("/api/v1/bob")
-async def register_bob(
-    name: str,
-    checksum_address: str,
-):
-    bob_name = name
-
-    bob = Bob(
-        checksum_address=checksum_address,
-        domain=settings.nucypher_network,
-        provider_uri=settings.provider_uri,
-    )
-
-    pub_enc_key = bob.public_keys(DecryptingPower)
-    pub_sig_key = bob.public_keys(SigningPower)
-
-    # Store it in the NuDrop db
-    data = {
-        "name": bob_name,
-        "enc_key": "0x" + pub_enc_key.hex(),
-        "sig_key": "0x" + pub_sig_key.hex(),
-    }
-
-    rdb.hmset("db:bobs:" + bob_name, data)
-    rdb.sadd("db:bobs", bob_name)
-
-    return data
 
 @app.post("/api/v1/bob/decrypt")
 def decrypt_data(
