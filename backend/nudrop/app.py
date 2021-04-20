@@ -3,6 +3,7 @@ import datetime
 import time
 
 import maya
+from nucypher.crypto.kits import UmbralMessageKit
 import redis
 import uvicorn
 from asgiref.sync import async_to_sync
@@ -14,6 +15,7 @@ from nucypher.characters.lawful import Alice, Bob, Enrico, Ursula
 from nucypher.config.constants import TEMPORARY_DOMAIN
 from nucypher.config.keyring import ExistingKeyringError, NucypherKeyring
 from nucypher.crypto.powers import DecryptingPower, SigningPower
+from nucypher.policy.collections import SignedTreasureMap
 from nucypher.utilities.logging import GlobalLoggerSettings
 from umbral.keys import UmbralPrivateKey, UmbralPublicKey
 from web3.main import Web3
@@ -60,9 +62,7 @@ def about_me(
     checksum_address: str = Form(...),
     password: str = Form(...),
 ):
-    keyring = get_keyring(
-        Web3.toChecksumAddress(checksum_address),
-        password)
+    keyring = get_keyring(Web3.toChecksumAddress(checksum_address), password)
 
     data = {
         "pub_enc_key": keyring.encrypting_public_key.hex(),
@@ -82,10 +82,10 @@ def encrypt_file(
     enrico = Enrico(policy_encrypting_key=key)
     plaintext = plaintext.encode("utf-8")
     ciphertext, _signature = enrico.encrypt_message(plaintext)
-
     return {
         "ciphertext": ciphertext.to_bytes().hex(),
     }
+
 
 @app.post("/api/v1/bob/decrypt")
 def decrypt_data(
@@ -95,17 +95,16 @@ def decrypt_data(
     policy_pub_key: str = Form(...),
     alice_verifying_key: str = Form(...),
     label: str = Form(...),
-    ciphertext=Form(...),
+    ciphertext: str = Form(...),
+    tmap_bytes: str = Form(...),
 ):
     signer = WebsocketSigner(
         sid=socket_id,
         sign_message_cb=sign_message_cb,
         sign_transaction_cb=sign_transaction_cb,
     )
-    
-    keyring = get_keyring(
-        Web3.toChecksumAddress(bob_address),
-        bob_password)
+
+    keyring = get_keyring(Web3.toChecksumAddress(bob_address), bob_password)
 
     bob = Bob(
         keyring=keyring,
@@ -114,13 +113,14 @@ def decrypt_data(
         provider_uri=settings.provider_uri,
     )
 
-    bob.join_policy(bytes(label, "utf-8"), bytes.fromhex(policy_pub_key))
+    signed_tmap = SignedTreasureMap.from_bytes(bytes.fromhex(tmap_bytes))
 
     delivered_cleartexts = bob.retrieve(
-        ciphertext,
-        policy_encrypting_key=policy_pub_key,
-        alice_verifying_key=alice_verifying_key,
+        UmbralMessageKit.from_bytes(bytes.fromhex(ciphertext)),
+        policy_encrypting_key=UmbralPublicKey.from_hex(policy_pub_key),
+        alice_verifying_key=UmbralPublicKey.from_hex(alice_verifying_key),
         label=label,
+        treasure_map=signed_tmap,
     )
 
     return {"cleartext": delivered_cleartexts}
@@ -167,8 +167,16 @@ def create_policy(
     m, n = 2, 3
     rate = Web3.toWei(50, "gwei")
 
+    seed_uri = "https://lynx.nucypher.network:9151"
+    ursula = Ursula.from_seed_and_stake_info(seed_uri=seed_uri)
     policy = alice.grant(
-        remote_bob, label, rate=rate, m=m, n=n, expiration=policy_end_datetime
+        remote_bob,
+        label,
+        rate=rate,
+        m=m,
+        n=n,
+        expiration=policy_end_datetime,
+        handpicked_ursulas=[ursula],
     )
 
     policy.treasure_map_publisher.block_until_complete()
@@ -177,11 +185,11 @@ def create_policy(
 
     alice.disenchant()
     del alice
-
     return {
         "verifying_key": alice_verifying_key.hex(),
         "policy_public_key": policy_public_key.hex(),
         "label": label.decode("utf-8"),
+        "tmap_bytes": bytes(policy.treasure_map).hex(),
     }
 
 
