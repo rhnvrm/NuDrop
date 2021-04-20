@@ -120,7 +120,7 @@
       </div>
     </editor-menu-bar>
 
-    <editor-content class="editor__content" :editor="editor"  />
+    <editor-content class="editor__content" :editor="editor" />
   </div>
 </template>
 
@@ -176,10 +176,20 @@ export default {
         ],
         content: ``,
         onUpdate: ({ getJSON, getHTML }) => {
-          this.$emit("editor-data", {json:getJSON(), html:getHTML()})
+          this.$emit("editor-data", { json: getJSON(), html: getHTML() });
         },
       }),
     };
+  },
+  methods: {
+    setContent(content) {
+      // you can pass a json document
+      this.editor.setContent(
+        content,
+        true
+      );
+      this.editor.focus();
+    },
   },
   beforeDestroy() {
     this.editor.destroy();

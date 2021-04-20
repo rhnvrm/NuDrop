@@ -91,7 +91,6 @@ def encrypt_file(
 def decrypt_data(
     bob_address: str = Form(...),
     bob_password: str = Form(...),
-    socket_id: str = Form(...),
     policy_pub_key: str = Form(...),
     alice_verifying_key: str = Form(...),
     label: str = Form(...),
@@ -99,7 +98,7 @@ def decrypt_data(
     tmap_bytes: str = Form(...),
 ):
     signer = WebsocketSigner(
-        sid=socket_id,
+        sid=0,
         sign_message_cb=sign_message_cb,
         sign_transaction_cb=sign_transaction_cb,
     )

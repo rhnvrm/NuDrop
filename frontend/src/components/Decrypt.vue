@@ -1,20 +1,15 @@
 <template>
   <div class="section">
-    <div>User address: {{ user_address }}</div>
-    <div>Socket address: {{ socket_id }}</div>
-
-    <div>{{ api_response_data }}</div>
-
     <h1 class="title">Decrypt File</h1>
     <b-field label="Codename">
       <b-input v-model="codename" placeholder=""></b-input>
     </b-field>
-    <b-field message="ipfs uri where the file will be stored">
+    <!-- <b-field message="ipfs uri where the file will be stored">
       <p class="control">
         <span class="button is-static">ipfs://</span>
       </p>
       <b-input expanded></b-input>
-    </b-field>
+    </b-field> -->
     <b-field>
       <b-input
         placeholder="Policy Encrypting Key"
@@ -40,12 +35,14 @@
         placeholder="passphrase"></b-input>
     </b-field>
 
-    <b-field label="Ciphertext">
-      <b-input v-model="ciphertext" type="textarea"></b-input>
+    <b-field label="Nucypher Treasuremap">
+      <b-input 
+        v-model="nuTreasuremap" 
+        placeholder="treasuremap"></b-input>
     </b-field>
 
-    <b-field label="Decrypted File">
-      <Editor @editor-data="editorDataUpdate"></Editor>
+    <b-field label="Ciphertext">
+      <b-input v-model="ciphertext" type="textarea"></b-input>
     </b-field>
 
     <div class="buttons">
@@ -53,6 +50,10 @@
         >Decrypt</b-button
       >
     </div>
+
+    <b-field label="Decrypted File">
+      <Editor ref="editor" @editor-data="editorDataUpdate"></Editor>
+    </b-field>
   </div>
 </template>
 
@@ -79,44 +80,9 @@ export default {
 
     var web3 = new Web3(provider);
     this.web3 = web3;
+    this.user_address = web3.eth.accounts.wallet._accounts.currentProvider.address;
 
-    var client_id = Date.now();
-    // TODO: make this uri configurable
-    var wsprotocol = "";
-    if (window.location.hostname === "localhost") {
-      wsprotocol = "ws";
-    } else {
-      wsprotocol = "wss";
-    }
-    var ws = new WebSocket(
-      wsprotocol + `://` + window.location.hostname + `/api/ws/${client_id}`
-    );
-    ws.onmessage = (event) => {
-      const ev = JSON.parse(event.data);
-      var data = ev.data;
-      switch (ev.kind) {
-        case "prompt_login":
-          this.user_address =
-            web3.eth.accounts.wallet._accounts.currentProvider.address;
-          this.socket_id = client_id;
-          break;
-        case "sign_transaction":
-          this.signTx(ws, data);
-          break;
-
-        case "sign_message":
-          this.signMsg(ws, data);
-          break;
-      }
-    };
-
-    ws.onopen = () =>
-      ws.send(
-        JSON.stringify({
-          kind: "on_load",
-          sid: client_id,
-        })
-      );
+    this.$refs.editor.setContent();
   },
   data: function () {
     return {
@@ -124,8 +90,8 @@ export default {
         json: "",
         data: "",
       },
+      editor: null,
       user_address: "not available",
-      socket_id: "not available",
       enc_key: "",
       sig_key: "",
       policy_key: "",
@@ -134,6 +100,7 @@ export default {
       api_response_data: "",
       ciphertext: "",
       nuPassphrase: "",
+      nuTreasuremap: "",
     };
   },
   computed: {
@@ -156,7 +123,7 @@ export default {
         ciphertext: this.ciphertext,
         bob_address: this.user_address,
         bob_password: this.nuPassphrase,
-        socket_id: this.socket_id
+        tmap_bytes: this.nuTreasuremap,
       };
 
       axios
@@ -164,68 +131,8 @@ export default {
         .then((response) => {
           console.log(response);
           this.api_response_data = response;
+          this.$refs.editor.setContent(JSON.parse(response.data.cleartext[0]))
         });
-    },
-    signMsg: async function (ws, data) {
-      var msg = {
-        address: this.web3.utils.toHex(data.address),
-        message: this.web3.utils.toHex(data.message),
-      };
-
-      /* eslint-disable no-unused-vars */
-      const { result, _ } = await this.$buefy.dialog.confirm({
-        message: JSON.stringify(data, null, 2),
-        closeOnConfirm: true,
-        cancelText: "Disagree",
-        confirmText: "Sign",
-        onConfirm: () => this.$buefy.toast.open("Signing..."),
-      });
-      /* eslint-enable no-unused-vars */
-
-      if (result) {
-        this.web3.eth.sign(msg.message, msg.address).then((sig) => {
-          ws.send(
-            JSON.stringify({
-              kind: "signmsg_resp",
-              sid: this.socket_id,
-              resp: sig,
-            })
-          );
-        });
-      }
-    },
-    signTx: async function (ws, data) {
-      var txParams = {
-        gasPrice: this.web3.utils.toHex(data.gasPrice),
-        chainId: this.web3.utils.toHex(data.chainId),
-        value: this.web3.utils.toHex(data.value),
-        from: this.web3.utils.toHex(data.from),
-        gas: this.web3.utils.toHex(data.gas),
-        to: this.web3.utils.toHex(data.to),
-        data: this.web3.utils.toHex(data.data),
-      };
-
-      /* eslint-disable no-unused-vars */
-      const { result, _ } = await this.$buefy.dialog.confirm({
-        message: JSON.stringify(data, null, 2),
-        closeOnConfirm: true,
-        cancelText: "Disagree",
-        confirmText: "Sign",
-        onConfirm: () => this.$buefy.toast.open("Signing..."),
-      });
-      /* eslint-enable no-unused-vars */
-
-      if (result) {
-        this.web3.eth.signTransaction(txParams).then((sig) => {
-          ws.send(
-            JSON.stringify({
-              kind: "signtx_resp",
-              sid: this.socket_id,
-              resp: sig.raw,
-            })
-          );
-        });
-      }
     },
   },
 };

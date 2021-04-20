@@ -1,18 +1,15 @@
 <template>
   <div class="section">
-
-    <div>{{ api_response_data }}</div>
-
     <h1 class="title">Encrypt File</h1>
-    <b-field label="File Name">
+    <!-- <b-field label="File Name">
       <b-input placeholder="My File"></b-input>
-    </b-field>
-    <b-field message="ipfs uri where the file will be stored">
+    </b-field> -->
+    <!-- <b-field message="ipfs uri where the file will be stored">
       <p class="control">
         <span class="button is-static">ipfs://</span>
       </p>
       <b-input expanded></b-input>
-    </b-field>
+    </b-field> -->
     <b-field>
       <b-input
         placeholder="Policy Key..."
@@ -30,6 +27,9 @@
         >Encrypt</b-button
       >
     </div>
+    <b-field label="Ciphertext">
+      <b-input v-model="ciphertext" type="textarea"></b-input>
+    </b-field>
   </div>
 </template>
 
@@ -50,8 +50,7 @@ export default {
         data: "",
       },
       policy_key: "",
-      
-      api_response_data: "",
+      ciphertext: "", 
     };
   },
 
@@ -69,7 +68,7 @@ export default {
         querystring.stringify(payload)
       ).then((response) => {
         console.log(response)
-        this.api_response_data = response
+        this.ciphertext = response.data.ciphertext
       })
     },
   },
