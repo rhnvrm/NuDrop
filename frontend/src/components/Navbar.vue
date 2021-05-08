@@ -21,9 +21,9 @@
                 <b-navbar-item tag="router-link" to="/decrypt">
                     Decrypt
                 </b-navbar-item>
-                <b-navbar-item tag="router-link" to="/me/files">
+                <!-- <b-navbar-item tag="router-link" to="/me/files">
                     My Files
-                </b-navbar-item>
+                </b-navbar-item> -->
             </b-navbar-dropdown>
             <b-navbar-dropdown :hoverable="true" label="Info">
                 <b-navbar-item href="#">

@@ -41,11 +41,15 @@ const vuexPersist = new VuexPersist({
 
 const store = new Vuex.Store({
   state: {
-    private_key: "not available"
+    private_key: "not available",
+    pseudonym: "",
   },
   mutations: {
     set_private_key(state, private_key) {
       state.private_key = private_key
+    },
+    set_pseudonym(state, pseudonym) {
+      state.pseudonym = pseudonym
     }
   },
   plugins: [vuexPersist.plugin]

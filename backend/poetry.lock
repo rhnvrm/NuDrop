@@ -1050,7 +1050,7 @@ python-versions = "*"
 
 [[package]]
 name = "nucypher"
-version = "4.8.1"
+version = "5.2.0"
 description = "A proxy re-encryption network to empower privacy in decentralized systems."
 category = "main"
 optional = false
@@ -1166,10 +1166,10 @@ zipp = {version = "3.4.0", markers = "python_version >= \"3.6\""}
 [package.extras]
 alice = ["qrcode"]
 benchmark = ["appdirs (==1.4.4)", "bandit (==1.7.0)", "certifi (==2020.12.5)", "coverage (==5.3.1)", "decorator (==4.4.2)", "distlib (==0.3.1)", "filelock (==3.0.12)", "greenlet (==0.4.17)", "hypothesis (==5.49.0)", "iniconfig (==1.1.1)", "mypy-extensions (==0.4.3)", "mypy (==0.790)", "nodeenv (==1.5.0)", "pre-commit (==2.9.3)", "py-solc-x (==0.10.1)", "pyflakes (==2.2.0)", "pytest-cov (==2.10.1)", "pytest-mock (==3.5.0)", "pytest-timeout (==1.4.2)", "pytest-twisted (==1.13.2)", "pytest-xdist (==2.2.0)", "pytest (==6.2.1)", "pyyaml (==5.3.1)", "requests (==2.25.1)", "sortedcontainers (==2.3.0)", "typed-ast (==1.4.2)", "pytest-benchmark", "cfgv (==3.2.0)", "importlib-metadata (==3.3.0)", "typing-extensions (==3.7.4.3)", "pbr (==5.5.1)", "pyparsing (==2.4.7)", "toml (==0.10.2)", "six (==1.15.0)", "apipkg (==1.5)", "attrs (==20.3.0)", "execnet (==1.7.1)", "identify (==1.5.11)", "idna (==2.10)", "packaging (==20.8)", "pluggy (==0.13.1)", "py (==1.10.0)", "semantic-version (==2.8.5)", "smmap (==3.0.4)", "virtualenv (==20.2.2)", "chardet (==4.0.0)", "pytest-forked (==1.3.0)", "urllib3 (==1.26.2)", "gitdb (==4.0.5)", "gitpython (==3.1.12)", "stevedore (==3.3.0)", "zipp (==3.4.0)"]
+ursula = ["sentry-sdk", "prometheus-client"]
 bob = ["qrcode"]
 deploy = ["bumpversion", "ansible", "twine"]
 dev = ["appdirs (==1.4.4)", "bandit (==1.7.0)", "certifi (==2020.12.5)", "coverage (==5.3.1)", "decorator (==4.4.2)", "distlib (==0.3.1)", "filelock (==3.0.12)", "greenlet (==0.4.17)", "hypothesis (==5.49.0)", "iniconfig (==1.1.1)", "mypy-extensions (==0.4.3)", "mypy (==0.790)", "nodeenv (==1.5.0)", "pre-commit (==2.9.3)", "py-solc-x (==0.10.1)", "pyflakes (==2.2.0)", "pytest-cov (==2.10.1)", "pytest-mock (==3.5.0)", "pytest-timeout (==1.4.2)", "pytest-twisted (==1.13.2)", "pytest-xdist (==2.2.0)", "pytest (==6.2.1)", "pyyaml (==5.3.1)", "requests (==2.25.1)", "sortedcontainers (==2.3.0)", "typed-ast (==1.4.2)", "prometheus-client", "sentry-sdk", "qrcode", "cfgv (==3.2.0)", "importlib-metadata (==3.3.0)", "typing-extensions (==3.7.4.3)", "pbr (==5.5.1)", "pyparsing (==2.4.7)", "toml (==0.10.2)", "six (==1.15.0)", "apipkg (==1.5)", "attrs (==20.3.0)", "execnet (==1.7.1)", "identify (==1.5.11)", "idna (==2.10)", "packaging (==20.8)", "pluggy (==0.13.1)", "py (==1.10.0)", "semantic-version (==2.8.5)", "smmap (==3.0.4)", "virtualenv (==20.2.2)", "chardet (==4.0.0)", "pytest-forked (==1.3.0)", "urllib3 (==1.26.2)", "gitdb (==4.0.5)", "gitpython (==3.1.12)", "stevedore (==3.3.0)", "zipp (==3.4.0)"]
-ursula = ["prometheus-client", "sentry-sdk"]
 
 [[package]]
 name = "parsimonious"
@@ -2093,7 +2093,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "1e3d13e4292a90accf7c693a9eb2ba94f7ba9d762853eaaa67976cb2ba05e309"
+content-hash = "a5494207cebf897f966392e639f9ddbe44a54d986a7a2a69eb78c64f7f23fe1a"
 
 [metadata.files]
 aioredis = [
@@ -2698,8 +2698,8 @@ netifaces = [
     {file = "netifaces-0.10.9.tar.gz", hash = "sha256:2dee9ffdd16292878336a58d04a20f0ffe95555465fee7c9bd23b3490ef2abf3"},
 ]
 nucypher = [
-    {file = "nucypher-4.8.1-py3-none-any.whl", hash = "sha256:24edee8e00baaa51a14bcf00cd4701ed5104f399ebd0989f6948fb3e0409b81c"},
-    {file = "nucypher-4.8.1.tar.gz", hash = "sha256:f5f78175388bc344466d20b8550bd26bfeecf7fbddf47067498f31d61fd26080"},
+    {file = "nucypher-5.2.0-py3-none-any.whl", hash = "sha256:5495f5ff91702d0034cc4dd9439cc3d508b744496366e922796056c7663aff13"},
+    {file = "nucypher-5.2.0.tar.gz", hash = "sha256:820f82ccf6503d03d7dfcac1faaa290140082c0d4e4308fc403a4f6f358f8a67"},
 ]
 parsimonious = [
     {file = "parsimonious-0.8.1.tar.gz", hash = "sha256:3add338892d580e0cb3b1a39e4a1b427ff9f687858fdd61097053742391a9f6b"},

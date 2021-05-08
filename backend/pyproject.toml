@@ -7,7 +7,7 @@ license = "AGPL v3.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-nucypher = "^4.7.1"
+nucypher = "^5.2.0"
 Flask = "^1.1.2"
 redis = "^3.5.3"
 web3 = "5.12.3"

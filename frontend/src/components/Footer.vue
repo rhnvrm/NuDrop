@@ -3,7 +3,11 @@
     <div class="content has-text-centered">
       <p>
         <strong>NuDrop</strong> by
-        <a href="https://rohanverma.net">Rohan Verma</a>. The source code is
+        <a href="https://rohanverma.net">Rohan Verma</a>. 
+        
+        Powered by <a href="https://nucypher.com">NuCypher</a>.
+        
+        The source code is
         licensed
         <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. The
         website content is licensed

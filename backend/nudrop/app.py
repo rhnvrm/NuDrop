@@ -73,6 +73,39 @@ def about_me(
 
     return data
 
+@app.post("/api/v1/me/share/public")
+def share_public(
+    checksum_address: str = Form(...),
+    password: str = Form(...),
+    name: str = Form(...),
+):
+    keyring = get_keyring(Web3.toChecksumAddress(checksum_address), password)
+
+    data = {
+        "pub_enc_key": keyring.encrypting_public_key.hex(),
+        "pub_sig_key": keyring.signing_public_key.hex(),
+    }
+
+    keyring.lock()
+
+    rdb.hmset("bob:"+name, data)
+    rdb.expire("bob:"+name, 604800)
+    return True
+
+
+@app.get("/api/v1/public/bobs")
+def get_public_bobs():
+    bobs = rdb.keys("bob:*")
+    return {
+        "bobs": [ x[4:] for x in bobs ]
+    }
+
+@app.get("/api/v1/public/bobs/{bob_id}")
+def get_public_bob(bob_id: str):
+    bob = rdb.hgetall("bob:"+bob_id)
+    return {
+        "data": bob,
+    }
 @app.post("/api/v1/enrico/encrypt")
 def encrypt_file(
     policy_pub_key: str = Form(...),

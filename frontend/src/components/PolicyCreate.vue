@@ -1,10 +1,10 @@
 <template>
   <div class="section">
-    Policy Create
+    <!-- Policy Create
     <div>User address: {{ user_address }}</div>
     <div>Socket address: {{ socket_id }}</div>
 
-    <div>{{ api_response_data }}</div>
+    <div>{{ api_response_data }}</div> -->
 
     <h1 class="title">Create Policy</h1>
     <b-field label="Code Name">
@@ -13,11 +13,21 @@
     <b-field label="Days">
       <b-numberinput min="1" v-model="expiry_days"></b-numberinput>
     </b-field>
+    <b-field label="Find a Receiver">
+      <b-autocomplete
+          :data="bobs"
+          placeholder="noble-mansion-cold-symptom"
+          icon="magnify"
+          clearable
+          @select="option => setBob(option)">
+          <template #empty>No results found</template>
+      </b-autocomplete>
+    </b-field>
     <b-field label="Receiver Encrypting Public Key">
-      <b-input v-model="rec_enc_key" placeholder="0x"></b-input>
+      <b-input v-model="rec_enc_key" placeholder="023..."></b-input>
     </b-field>
     <b-field label="Receiver Signing Public Key">
-      <b-input v-model="rec_sig_key" placeholder="0x"></b-input>
+      <b-input v-model="rec_sig_key" placeholder="037..."></b-input>
     </b-field>
     <b-field label="Nucypher Passphrase">
       <b-input 
@@ -84,6 +94,8 @@ export default {
           sid: client_id,
         })
       );
+
+    this.fetchBobs() 
   },
   data: function () {
     return {
@@ -96,6 +108,7 @@ export default {
       rec_enc_key:"",
       rec_sig_key:"",
       nuPassphrase: "",
+      bobs: [],
     };
   },
   methods: {
@@ -113,7 +126,59 @@ export default {
             bob_sig_key: this.rec_sig_key,
           })
         )
-        .then((response) => (this.api_response_data = response.data));
+        .then((response) => {
+          this.download(response.data)
+        }).catch((err) => {
+          this.$buefy.toast.open({
+            duration: 5000,
+            message: err,
+            position: 'is-bottom',
+            type: 'is-danger'
+          }) 
+        });
+    },
+    fetchBobs: function() {
+      axios
+        .get("/api/v1/public/bobs")
+        .then((response) => {
+          this.bobs = response.data.bobs
+        }).catch((err) => {
+          this.$buefy.toast.open({
+              duration: 5000,
+              message: err,
+              position: 'is-bottom',
+              type: 'is-danger'
+          }) 
+        })
+    },
+    setBob: function(bob) {
+      axios
+        .get("/api/v1/public/bobs/"+bob)
+        .then((response) => {
+          this.rec_sig_key = response.data.data.pub_sig_key
+          this.rec_enc_key = response.data.data.pub_enc_key
+        }).catch((err) => {
+          this.$buefy.toast.open({
+              duration: 5000,
+              message: err,
+              position: 'is-bottom',
+              type: 'is-danger'
+          }) 
+        })
+    },
+    download: function(data) {
+      var filename = "policy.json"
+      var text = JSON.stringify(data)
+      var element = document.createElement('a');
+      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+      element.setAttribute('download', filename);
+
+      element.style.display = 'none';
+      document.body.appendChild(element);
+
+      element.click();
+
+      document.body.removeChild(element);
     },
     signMsg: async function (ws, data) {
       var msg = {
